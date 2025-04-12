@@ -1,2 +1,16 @@
 app:
   PORT: 8080
+
+simulation:
+  rocket:
+    gravity: -9.81
+    thrust_power: 20.0
+    mass: 1.0
+    gimbal_limit: 0.2617993877991494  # 15 degrees in radians
+    initial_state:
+      x: 0.0
+      y: 100.0
+      vx: 0.0
+      vy: 0.0
+      theta: 0.0
+      omega: 0.0

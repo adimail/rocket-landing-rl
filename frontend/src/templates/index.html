@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
-    <h1>rocket-landing-rl</h1>
+    <h1>Live Rocket State</h1>
     <hr />
+    <pre id="rocket-state">Waiting for WebSocket data...</pre>
+    <div>
+        <button id="start-pause-btn">Pause</button>
+        <button id="restart-btn">Restart</button>
+    </div>
 {% end %}
