@@ -44,7 +44,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
             throttle = data.get("throttle", 0.0)
             gimbal = data.get("gimbal", 0.0)
 
-            if not self.sim.paused and not self.sim.done:
+            if not self.sim.paused and not self.sim.rocket.touchdown:
                 state, reward, done = self.sim.step((throttle, gimbal))
                 self.send_json(
                     {
@@ -87,7 +87,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                     time.sleep(self.sim.dt)
                     continue
 
-                if self.sim.done:
+                if self.sim.rocket.touchdown:
                     if not sent_sim_over:
                         state = self.sim.render()
                         self.io_loop.add_callback(
@@ -124,3 +124,11 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
             except Exception as e:
                 self.logger.error(f"Error during streaming: {e}")
                 break
+
+    def reset_simulation(self):
+        try:
+            self.logger.info("Resetting simulation after ground touch...")
+            state = self.sim.reset()
+            self.send_json({"state": state, "time": self.sim.time, "initial": True})
+        except Exception as e:
+            self.logger.error(f"Failed to reset simulation: {e}")

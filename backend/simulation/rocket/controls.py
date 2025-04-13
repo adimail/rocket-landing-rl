@@ -1,17 +1,17 @@
-from backend.simulation.physics.rocket import Rocket
+from backend.simulation.rocket import Rocket
 from backend.config import Config
 
 
-class RocketSimulator:
+class RocketControls:
     def __init__(self):
         try:
             self.config = Config()
             self.dt = self.config.get("env.time_step") or 0.05
             self.rocket = Rocket(self.config)
             self.time = 0.0
-            self.done = False
+            self.touchdown = False
         except Exception as err:
-            print("Error initializing RocketSimulator:", err)
+            print("Error initializing RocketControls:", err)
             raise
 
     def step(self, action):
@@ -22,7 +22,7 @@ class RocketSimulator:
           Optionally, gimbalAngleY can be included but is ignored for the 2D sim.
         """
         try:
-            if self.done:
+            if self.touchdown:
                 raise Exception("Simulation is over. Reset to start again.")
 
             if isinstance(action, dict):
@@ -35,9 +35,9 @@ class RocketSimulator:
             self.time += self.dt
 
             state = self.rocket.get_state()
-            reward, self.done = self.compute_reward(state)
+            reward, self.touchdown = self.compute_reward(state)
 
-            return state, reward, self.done
+            return state, reward, self.touchdown
         except Exception as err:
             print("Error during simulation step:", err)
             raise
@@ -67,8 +67,8 @@ class RocketSimulator:
         try:
             self.rocket.reset()
             self.time = 0.0
-            self.done = False
+            self.touchdown = False
             return self.rocket.get_state()
         except Exception as err:
-            print("Error resetting RocketSimulator:", err)
+            print("Error resetting RocketControls:", err)
             raise

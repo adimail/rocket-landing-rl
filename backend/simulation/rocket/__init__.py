@@ -1,5 +1,5 @@
 import numpy as np
-from .config import get_initial_state
+from backend.simulation.config import get_initial_state
 from backend.simulation.physics import PhysicsEngine
 
 

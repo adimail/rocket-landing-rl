@@ -1,4 +1,4 @@
-from backend.simulation.physics.controls import RocketSimulator
+from backend.simulation.rocket.controls import RocketControls
 from backend.logger import Logger
 from datetime import datetime
 
@@ -20,10 +20,10 @@ class SimulationController:
                 stream_handler=False,
             ).get_logger()
 
-            self.sim = RocketSimulator()
-            self.dt = self.sim.dt
+            self.rocket = RocketControls()
+            self.dt = self.rocket.dt
             self.paused = True
-            self.done = False
+            self.rocket.touchdown
             self.time = 0.0
 
             self._log("info", "SimulationController started")
@@ -38,9 +38,9 @@ class SimulationController:
     def reset(self):
         try:
             self._log("info", "Resetting simulation...")
-            state = self.sim.reset()
+            state = self.rocket.reset()
             self.paused = True
-            self.done = False
+            self.rocket.touchdown = False
             self.time = 0.0
 
             if self.log_state:
@@ -69,18 +69,18 @@ class SimulationController:
 
     def step(self, action=(0.0, 0.0)):
         try:
-            if self.paused or self.done:
-                state = self.sim.rocket.get_state().copy()
-                return state, 0.0, self.done
+            if self.paused or self.rocket.touchdown:
+                state = self.rocket.rocket.get_state().copy()
+                return state, 0.0, self.rocket.touchdown
 
             if self.log_action:
                 self._log(
                     "debug", f"Action: throttle={action[0]:.3f}, gimbal={action[1]:.3f}"
                 )
 
-            state, reward, sim_done = self.sim.step(action)
-            self.time += self.sim.dt
-            self.done = sim_done
+            state, reward, sim_done = self.rocket.step(action)
+            self.time += self.rocket.dt
+            self.rocket.touchdown = sim_done
 
             if self.log_state:
                 self._log("debug", f"State: {state}")
@@ -88,14 +88,14 @@ class SimulationController:
             if self.log_reward:
                 self._log("debug", f"Reward: {reward:.5f}")
 
-            return state, reward, self.done
+            return state, reward, self.rocket.touchdown
         except Exception as e:
             self._log("exception", f"Simulation step failed: {e}")
             raise
 
     def render(self):
         try:
-            return self.sim.rocket.get_state().copy()
+            return self.rocket.rocket.get_state().copy()
         except Exception as e:
             self._log("exception", f"Simulation render failed: {e}")
             raise
