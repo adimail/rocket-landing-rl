@@ -2,6 +2,7 @@ from tornado.ioloop import IOLoop
 import tornado.websocket
 import json
 import threading
+import time
 
 from backend.simulation import SimulationController
 
@@ -60,13 +61,10 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         try:
             if command == "pause":
                 self.sim.pause()
-                self.logger.info("Simulation paused.")
             elif command == "start":
                 self.sim.start()
-                self.logger.info("Simulation started.")
             elif command == "restart":
                 state = self.sim.reset()
-                self.logger.info("Simulation restarted.")
                 self.send_json({"state": state, "restart": True, "time": self.sim.time})
         except Exception as e:
             self.logger.error(f"Command handling failed: {e}")
@@ -79,11 +77,14 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def stream_state(self):
         sent_sim_over = False
+        step_counter = 0
+        steps_per_message = int(0.1 / self.sim.dt)
 
         while self.client_connected:
             try:
                 if self.sim.paused:
                     sent_sim_over = False
+                    time.sleep(self.sim.dt)
                     continue
 
                 if self.sim.done:
@@ -98,21 +99,28 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                                 "time": self.sim.time,
                             },
                         )
-                        self.logger.info(f"Simulation over.")
+                        self.logger.info("Simulation over.")
                         sent_sim_over = True
+                    time.sleep(self.sim.dt)
                     continue
 
-                sent_sim_over = False
                 state, reward, done = self.sim.step((0.0, 0.0))
-                self.io_loop.add_callback(
-                    self.send_json,
-                    {
-                        "state": state,
-                        "reward": reward,
-                        "done": done,
-                        "time": self.sim.time,
-                    },
-                )
+                step_counter += 1
+
+                if step_counter >= steps_per_message:
+                    self.io_loop.add_callback(
+                        self.send_json,
+                        {
+                            "state": state,
+                            "reward": reward,
+                            "done": done,
+                            "time": self.sim.time,
+                        },
+                    )
+                    step_counter = 0
+
+                time.sleep(self.sim.dt)
+
             except Exception as e:
                 self.logger.error(f"Error during streaming: {e}")
                 break

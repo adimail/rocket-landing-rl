@@ -6,7 +6,7 @@ env:
   thrust_power: 20.0
   gimbal_limit_deg: 15
   fuel_consumption_rate: 0.1
-  time_step: 0.0005
+  time_step: 0.2
 
 rocket:
   position_limits:
