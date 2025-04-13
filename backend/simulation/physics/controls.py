@@ -1,11 +1,13 @@
 from backend.simulation.physics.rocket import Rocket
+from backend.config import Config
 
 
 class RocketSimulator:
-    def __init__(self, dt=0.05):
+    def __init__(self):
         try:
-            self.rocket = Rocket()
-            self.dt = dt
+            self.config = Config()
+            self.dt = self.config.get("env.time_step") or 0.05
+            self.rocket = Rocket(self.config)
             self.time = 0.0
             self.done = False
         except Exception as err:

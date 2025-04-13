@@ -1,51 +1,46 @@
 import numpy as np
-from .config import get_initial_state, get_environment_config
+from .config import get_initial_state
+from backend.simulation.physics import PhysicsEngine
 
 
 class Rocket:
-    def __init__(self):
+    def __init__(self, config):
         try:
+            self.config = config
+            self.physics_engine = PhysicsEngine(self.config)
+            self.gimbal_limit = self.config.get("env.gimbal_limit_deg") or 15
             self.state = get_initial_state()
-
-            env_config = get_environment_config()
-            self.gravity = env_config["gravity"]
-            self.thrust_power = env_config["thrust_power"]
-            self.gimbal_limit = env_config["gimbal_limit"]
-            self.fuel_consumption_rate = env_config["fuel_consumption_rate"]
         except Exception as err:
             print("Error initializing Rocket:", err)
             raise
 
     def apply_action(self, throttle: float, gimbal: float, dt: float):
         try:
-            gimbal = np.clip(gimbal, -self.gimbal_limit, self.gimbal_limit)
             throttle = np.clip(throttle, 0.0, 1.0)
 
             total_mass = self.state["mass"] + self.state["fuelMass"]
             if self.state["fuelMass"] <= 0:
                 throttle = 0.0
 
-            thrust = throttle * self.thrust_power
-            thrust_direction = self.state["angle"] + gimbal
-            fx = thrust * np.sin(thrust_direction)
-            fy = thrust * np.cos(thrust_direction) + total_mass * self.gravity
+            net_force = self.physics_engine.calculate_net_force(
+                total_mass, throttle, self.state["angle"], gimbal
+            )
+            acceleration = self.physics_engine.calculate_acceleration(
+                net_force, total_mass
+            )
+            self.state["ax"], self.state["ay"] = acceleration
 
-            ax = fx / total_mass
-            ay = fy / total_mass
-            self.state["ax"] = ax
-            self.state["ay"] = ay
+            self.physics_engine.update_linear_motion(self.state, dt)
 
-            self.state["vx"] += ax * dt
-            self.state["vy"] += ay * dt
-            self.state["x"] += self.state["vx"] * dt
-            self.state["y"] += self.state["vy"] * dt
+            angular_acceleration = self.physics_engine.calculate_angular_acceleration(
+                gimbal
+            )
+            self.state["angularAcceleration"] = angular_acceleration
+            self.physics_engine.update_angular_motion(self.state, dt)
 
-            angular_acceleration = gimbal * 2.0
-            self.state["angularVelocity"] += angular_acceleration * dt
-            self.state["angle"] += self.state["angularVelocity"] * dt
-
-            fuel_used = throttle * self.fuel_consumption_rate * dt
+            fuel_used = self.physics_engine.calculate_fuel_consumption(throttle, dt)
             self.state["fuelMass"] = max(self.state["fuelMass"] - fuel_used, 0.0)
+
         except Exception as err:
             print("Error in apply_action:", err)
             raise

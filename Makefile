@@ -1,6 +1,17 @@
 run:
 	python3 run.py
 
+LOGS_DIR := $(CURDIR)/logs
+
+clean:
+	@if [ -d "$(LOGS_DIR)" ]; then \
+		echo "Removing logs directory: $(LOGS_DIR)"; \
+		rm -rf "$(LOGS_DIR)"; \
+	else \
+		echo "No logs directory to clean."; \
+	fi
+
+
 build:
 	@echo "Building frontend..."
 	cd frontend && npm run build

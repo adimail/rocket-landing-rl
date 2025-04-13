@@ -1,4 +1,4 @@
-from backend.simulation.physics.engine import RocketSimulator
+from backend.simulation.physics.controls import RocketSimulator
 from backend.logger import Logger
 from datetime import datetime
 
