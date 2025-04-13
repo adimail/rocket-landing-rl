@@ -13,7 +13,7 @@
 
 body {
   font-family: monospace;
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 20px;
   line-height: 1.6;
@@ -27,15 +27,6 @@ h3 {
   color: var(--yellow);
 }
 
-pre {
-  background: var(--gray);
-  color: var(--bg);
-  padding: 10px;
-  border-radius: 5px;
-  overflow-x: auto;
-  cursor: pointer;
-}
-
 a {
   color: var(--blue);
   text-decoration: none;
@@ -47,26 +38,10 @@ a:hover {
 
 hr {
   border: 1px solid var(--orange);
-  margin: 40px 0;
+  margin: 20px 0;
 }
 
 footer {
   text-align: center;
   margin-top: 50px;
-}
-
-img {
-  width: 100%;
-  margin: 20px 0;
-  border: 2px solid var(--yellow);
-  border-radius: 5px;
-}
-
-ul {
-  list-style-type: square;
-  color: var(--orange);
-}
-
-li {
-  margin-bottom: 5px;
 }

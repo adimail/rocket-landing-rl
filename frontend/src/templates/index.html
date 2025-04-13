@@ -2,7 +2,11 @@
 {% block content %}
     <h1>Live Rocket State</h1>
     <hr />
-    <pre id="rocket-state">Waiting for WebSocket data...</pre>
+    <canvas id="rocket-canvas"
+            style="border:1px solid #333;
+                   background-color:#222;
+                   width: 100%;
+                   height: auto"></canvas>
     <div>
         <button id="start-pause-btn">Start</button>
         <button id="restart-btn">Restart</button>

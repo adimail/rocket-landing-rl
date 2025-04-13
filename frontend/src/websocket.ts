@@ -4,18 +4,11 @@ import { renderState } from "./utils/render";
 export class RocketWebSocket {
   private socket: WebSocket;
   private readonly url: string;
-  private readonly stateEl: HTMLPreElement;
   private isRunning: boolean = false;
 
-  constructor(wsUrl: string, stateElementId: string) {
+  constructor(wsUrl: string) {
     this.url = wsUrl;
-    const stateDom = document.getElementById(stateElementId) as HTMLPreElement;
 
-    if (!stateDom) {
-      throw new Error(`Element with ID "${stateElementId}" not found in DOM`);
-    }
-
-    this.stateEl = stateDom;
     this.socket = this.initializeSocket();
 
     this.attachUIHandlers();
@@ -53,7 +46,7 @@ export class RocketWebSocket {
       }
 
       const state: RocketState = data.state;
-      renderState(state, this.stateEl);
+      renderState(state);
     } catch (err) {
       console.error("[RocketWebSocket] Failed to parse message:", err);
     }

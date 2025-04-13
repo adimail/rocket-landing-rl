@@ -3,10 +3,9 @@ import { RocketWebSocket } from "./websocket";
 
 document.addEventListener("DOMContentLoaded", () => {
   try {
-    const rocketSocket = new RocketWebSocket(
-      "ws://localhost:8080/ws",
-      "rocket-state",
-    );
+    const rocketSocket = new RocketWebSocket("ws://localhost:8080/ws");
+
+    console.log(rocketSocket);
   } catch (error) {
     console.error("[Init] Failed to initialize RocketWebSocket:", error);
   }
