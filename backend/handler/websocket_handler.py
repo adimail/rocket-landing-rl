@@ -21,7 +21,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
 
         try:
             state = self.sim.reset()
-            self.send_json({"state": state, "time": self.sim.time, "initial": True})
+            self.send_json({"state": state, "initial": True})
         except Exception as e:
             self.logger.error(f"Failed to send initial state: {e}")
 
@@ -51,7 +51,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                         "state": state,
                         "reward": reward,
                         "done": done,
-                        "time": self.sim.time,
                     }
                 )
         except Exception as e:
@@ -65,7 +64,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.sim.start()
             elif command == "restart":
                 state = self.sim.reset()
-                self.send_json({"state": state, "restart": True, "time": self.sim.time})
+                self.send_json({"state": state, "restart": True})
         except Exception as e:
             self.logger.error(f"Command handling failed: {e}")
 
@@ -96,7 +95,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                                 "message": "sim over",
                                 "state": state,
                                 "done": True,
-                                "time": self.sim.time,
                             },
                         )
                         self.logger.info("Simulation over.")
@@ -114,7 +112,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                             "state": state,
                             "reward": reward,
                             "done": done,
-                            "time": self.sim.time,
                         },
                     )
                     step_counter = 0
@@ -129,6 +126,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         try:
             self.logger.info("Resetting simulation after ground touch...")
             state = self.sim.reset()
-            self.send_json({"state": state, "time": self.sim.time, "initial": True})
+            self.send_json({"state": state, "initial": True})
         except Exception as e:
             self.logger.error(f"Failed to reset simulation: {e}")

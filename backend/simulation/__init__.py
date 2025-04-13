@@ -24,7 +24,6 @@ class SimulationController:
             self.dt = self.rocket.dt
             self.paused = True
             self.rocket.touchdown
-            self.time = 0.0
 
             self._log("info", "SimulationController started")
         except Exception as e:
@@ -41,7 +40,6 @@ class SimulationController:
             state = self.rocket.reset()
             self.paused = True
             self.rocket.touchdown = False
-            self.time = 0.0
 
             if self.log_state:
                 self._log("debug", f"Initial State: {state}")
@@ -79,7 +77,6 @@ class SimulationController:
                 )
 
             state, reward, sim_done = self.rocket.step(action)
-            self.time += self.rocket.dt
             self.rocket.touchdown = sim_done
 
             if self.log_state:

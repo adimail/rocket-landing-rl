@@ -8,7 +8,6 @@ class RocketControls:
             self.config = Config()
             self.dt = self.config.get("env.time_step") or 0.05
             self.rocket = Rocket(self.config)
-            self.time = 0.0
             self.touchdown = False
         except Exception as err:
             print("Error initializing RocketControls:", err)
@@ -32,7 +31,6 @@ class RocketControls:
                 throttle, gimbal = action
 
             self.rocket.apply_action(throttle, gimbal, self.dt)
-            self.time += self.dt
 
             state = self.rocket.get_state()
             reward, self.touchdown = self.compute_reward(state)
@@ -66,7 +64,6 @@ class RocketControls:
     def reset(self):
         try:
             self.rocket.reset()
-            self.time = 0.0
             self.touchdown = False
             return self.rocket.get_state()
         except Exception as err:
