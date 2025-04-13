@@ -2,11 +2,11 @@ import numpy as np
 from backend.config import Config
 from typing import List
 
-
 cfg = Config()
 
 
 def get_float_list(config_key: str, fallback: List[float]) -> List[float]:
+    """Get a list of two floats from config, with fallback value if not found."""
     val = cfg.get(config_key)
     if (
         isinstance(val, list)
@@ -17,34 +17,46 @@ def get_float_list(config_key: str, fallback: List[float]) -> List[float]:
     return fallback
 
 
-x_limits: List[float] = get_float_list("rocket.initial_position_limits.x", [-50, 50])
-y_limits: List[float] = get_float_list("rocket.initial_position_limits.y", [110, 150])
-
-initial_x: float = float(np.random.uniform(x_limits[0], x_limits[1]))
-initial_y: float = float(np.random.uniform(y_limits[0], y_limits[1]))
-
-initial_vx = cfg.get("rocket.initial_velocity.vx") or -2.0
-initial_vy = cfg.get("rocket.initial_velocity.vy") or -10.0
-initial_ax = cfg.get("rocket.ax") or -2.0
-initial_ay = cfg.get("rocket.ay") or -10.0
-initial_angle = cfg.get("rocket.initial_state.angle") or 0.1
-initial_angular_velocity = cfg.get("rocket.initial_state.angularVelocity") or 0.05
-initial_mass = cfg.get("rocket.initial_state.mass") or 1.0
-initial_fuel_mass = cfg.get("rocket.initial_state.fuelMass") or 0.5
+def get_random_in_range(range_key: str, fallback: List[float]) -> float:
+    """Get a random value within a specified range from config."""
+    range_values = get_float_list(range_key, fallback)
+    return float(np.random.uniform(range_values[0], range_values[1]))
 
 
 def get_initial_state():
+    # Position randomization
+    x = get_random_in_range("rocket.position_limits.x", [-50.0, 50.0])
+    y = get_random_in_range("rocket.position_limits.y", [150.0, 190.0])
+
+    # Velocity randomization
+    vx = get_random_in_range("rocket.velocity_limits.vx", [-3.0, -1.0])
+    vy = get_random_in_range("rocket.velocity_limits.vy", [-13.0, -7.0])
+
+    # Acceleration randomization
+    ax = get_random_in_range("rocket.acceleration_limits.ax", [-0.5, 0.5])
+    ay = get_random_in_range("rocket.acceleration_limits.ay", [-0.5, 0.5])
+
+    # Attitude randomization
+    angle = get_random_in_range("rocket.attitude_limits.angle", [0.0, 0.4])
+    angular_velocity = get_random_in_range(
+        "rocket.attitude_limits.angularVelocity", [0.0, 0.16]
+    )
+
+    # Mass randomization
+    mass = get_random_in_range("rocket.mass_limits.mass", [34000, 38000])
+    fuel_mass = get_random_in_range("rocket.mass_limits.fuelMass", [370000, 410000])
+
     return {
-        "x": initial_x,
-        "y": initial_y,
-        "vx": initial_vx,
-        "vy": initial_vy,
-        "ax": initial_ax,
-        "ay": initial_ay,
-        "angle": initial_angle,
-        "angularVelocity": initial_angular_velocity,
-        "mass": initial_mass + initial_fuel_mass,
-        "fuelMass": initial_fuel_mass,
+        "x": x,
+        "y": y,
+        "vx": vx,
+        "vy": vy,
+        "ax": ax,
+        "ay": ay,
+        "angle": angle,
+        "angularVelocity": angular_velocity,
+        "mass": mass,
+        "fuelMass": fuel_mass,
     }
 
 

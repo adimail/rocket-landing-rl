@@ -8,16 +8,18 @@ env:
   fuel_consumption_rate: 0.1
 
 rocket:
-  ax: 0
-  ay: 0
-  initial_position_limits:
+  position_limits:
     x: [-50.0, 50.0]
-    y: [110, 150]
-  initial_velocity:
-    vx: -2.0
-    vy: -10.0
-  initial_state:
-    angle: 0.1
-    angularVelocity: 0.05
-    mass: 36000
-    fuelMass: 390000
+    y: [150.0, 190.0]
+  velocity_limits:
+    vx: [-3.0, -1.0]
+    vy: [-13.0, -7.0]
+  acceleration_limits:
+    ax: [-0.5, 0.5]
+    ay: [-0.5, 0.5]
+  attitude_limits:
+    angle: [-0.5, 0.5]
+    angularVelocity: [-0.16, 0.16]
+  mass_limits:
+    mass: [34000, 38000]
+    fuelMass: [370000, 410000]
