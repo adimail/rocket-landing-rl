@@ -2,7 +2,6 @@ from tornado.ioloop import IOLoop
 import tornado.websocket
 import json
 import threading
-import time
 
 from backend.simulation import SimulationController
 
@@ -85,7 +84,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
             try:
                 if self.sim.paused:
                     sent_sim_over = False
-                    time.sleep(0.1)
                     continue
 
                 if self.sim.done:
@@ -102,7 +100,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                         )
                         self.logger.info(f"Simulation over.")
                         sent_sim_over = True
-                    time.sleep(0.5)
                     continue
 
                 sent_sim_over = False
@@ -116,7 +113,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                         "time": self.sim.time,
                     },
                 )
-                time.sleep(0.1)
             except Exception as e:
                 self.logger.error(f"Error during streaming: {e}")
                 break

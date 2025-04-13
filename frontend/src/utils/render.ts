@@ -4,9 +4,17 @@ import marsbaseImageSrc from "../assets/landingsite.webp";
 
 const rocketImage = new Image();
 rocketImage.src = rocketImageSrc;
-
 const marsbaseImage = new Image();
 marsbaseImage.src = marsbaseImageSrc;
+
+const DEFAULT_ASPECT_RATIO = 0.75;
+const ROCKET_WIDTH = 30;
+const ROCKET_HEIGHT = 60;
+const SCALE_FACTOR = 2;
+const GROUND_OFFSET = 50;
+const TEXT_PADDING_X = 10;
+const TEXT_INITIAL_Y = 20;
+const TEXT_LINE_HEIGHT = 15;
 
 function resizeCanvas(canvas: HTMLCanvasElement, container: HTMLElement): void {
   try {
@@ -17,21 +25,24 @@ function resizeCanvas(canvas: HTMLCanvasElement, container: HTMLElement): void {
         marsbaseImage.naturalHeight / marsbaseImage.naturalWidth;
       canvas.height = canvas.width * aspectRatio;
     } else {
-      canvas.height = canvas.width * 0.75;
+      canvas.height = canvas.width * DEFAULT_ASPECT_RATIO;
     }
   } catch (error) {
     console.error("[resizeCanvas] Error resizing canvas:", error);
   }
 }
 
-export function renderState(state: RocketState): void {
+function setupCanvas(): {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+} | null {
   try {
     const canvas = document.getElementById(
       "rocket-canvas",
     ) as HTMLCanvasElement;
     if (!canvas) {
-      console.error("[renderState] Canvas not found.");
-      return;
+      console.error("[setupCanvas] Canvas not found.");
+      return null;
     }
 
     const container = canvas.parentElement || document.body;
@@ -39,85 +50,117 @@ export function renderState(state: RocketState): void {
 
     const ctx = canvas.getContext("2d");
     if (!ctx) {
-      console.error("[renderState] Canvas context not available.");
-      return;
+      console.error("[setupCanvas] Canvas context not available.");
+      return null;
     }
 
-    // --- Render the Mars base background image ---
-    // This draws the background image stretched to cover the entire canvas.
-    ctx.drawImage(marsbaseImage, 0, 0, canvas.width, canvas.height);
+    return { canvas, ctx };
+  } catch (error) {
+    console.error("[setupCanvas] Error setting up canvas:", error);
+    return null;
+  }
+}
 
-    // --- Render the booster (rocket) image ---
-    // Define rocket dimensions and calculate its center.
-    const rocketWidth = 30;
-    const rocketHeight = 60;
-    const rocketCenterX = rocketWidth / 2;
-    const rocketCenterY = rocketHeight / 2;
+function renderBackground(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+): void {
+  ctx.drawImage(marsbaseImage, 0, 0, canvasWidth, canvasHeight);
+}
 
-    // For this example, a fixed scale factor is used. You may modify this factor based on your requirements.
-    const scaleFactor = 2;
+function renderRocket(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  state: RocketState,
+): void {
+  const rocketCenterX = ROCKET_WIDTH / 2;
+  const rocketCenterY = ROCKET_HEIGHT / 2;
+  const canvasCenterX = canvasWidth / 2;
+  const canvasBottom = canvasHeight - GROUND_OFFSET;
 
-    // Assume the ground is located a bit above the bottom edge (50px above) of the canvas.
-    const canvasCenterX = canvas.width / 2;
-    const canvasBottom = canvas.height - 50;
+  ctx.save();
 
-    ctx.save();
-    // Translate so that the rocket's position (state.x, state.y) relates to the canvas coordinate system:
-    // The x position is centered, and the y position is measured upward from the ground.
-    ctx.translate(
-      canvasCenterX + state.x * scaleFactor,
-      canvasBottom - state.y * scaleFactor,
-    );
-    ctx.rotate(state.angle);
-    ctx.drawImage(
-      rocketImage,
-      -rocketCenterX,
-      -rocketCenterY,
-      rocketWidth,
-      rocketHeight,
-    );
-    ctx.restore();
+  ctx.translate(
+    canvasCenterX + state.x * SCALE_FACTOR,
+    canvasBottom - state.y * SCALE_FACTOR,
+  );
 
-    // --- Render Rocket State as Text ---
-    ctx.font = "12px monospace";
-    ctx.fillStyle = "#eee";
-    let textX = 10;
-    let textY = 20;
-    const lineHeight = 15;
+  ctx.rotate(state.angle);
 
-    ctx.fillText(
-      `Position: x=${state.x.toFixed(2)}, y=${state.y.toFixed(2)}`,
-      textX,
-      textY,
-    );
-    textY += lineHeight;
-    ctx.fillText(
-      `Velocity: vx=${state.vx.toFixed(2)}, vy=${state.vy.toFixed(2)}`,
-      textX,
-      textY,
-    );
-    textY += lineHeight;
-    ctx.fillText(
-      `Acceleration: ax=${state.ax.toFixed(2)}, ay=${state.ay.toFixed(2)}`,
-      textX,
-      textY,
-    );
-    textY += lineHeight;
-    ctx.fillText(
-      `Angle: ${((state.angle * 180) / Math.PI).toFixed(2)} deg`,
-      textX,
-      textY,
-    );
-    textY += lineHeight;
-    ctx.fillText(
-      `Angular Vel: ω=${state.angularVelocity.toFixed(2)} rad/s`,
-      textX,
-      textY,
-    );
-    textY += lineHeight;
-    ctx.fillText(`Mass: ${state.mass.toFixed(2)} kg`, textX, textY);
-    textY += lineHeight;
-    ctx.fillText(`Fuel Mass: ${state.fuelMass.toFixed(2)} kg`, textX, textY);
+  ctx.drawImage(
+    rocketImage,
+    -rocketCenterX,
+    -rocketCenterY,
+    ROCKET_WIDTH,
+    ROCKET_HEIGHT,
+  );
+
+  ctx.restore();
+}
+
+function renderStateText(
+  ctx: CanvasRenderingContext2D,
+  state: RocketState,
+): void {
+  ctx.font = "12px monospace";
+  ctx.fillStyle = "#eee";
+
+  let textX = TEXT_PADDING_X;
+  let textY = TEXT_INITIAL_Y;
+
+  ctx.fillText(
+    `Position: x=${state.x.toFixed(2)}, y=${state.y.toFixed(2)}`,
+    textX,
+    textY,
+  );
+  textY += TEXT_LINE_HEIGHT;
+
+  ctx.fillText(
+    `Velocity: vx=${state.vx.toFixed(2)}, vy=${state.vy.toFixed(2)}`,
+    textX,
+    textY,
+  );
+  textY += TEXT_LINE_HEIGHT;
+
+  ctx.fillText(
+    `Acceleration: ax=${state.ax.toFixed(2)}, ay=${state.ay.toFixed(2)}`,
+    textX,
+    textY,
+  );
+  textY += TEXT_LINE_HEIGHT;
+
+  ctx.fillText(
+    `Angle: ${((state.angle * 180) / Math.PI).toFixed(2)} deg`,
+    textX,
+    textY,
+  );
+  textY += TEXT_LINE_HEIGHT;
+
+  ctx.fillText(
+    `Angular Vel: ω=${state.angularVelocity.toFixed(2)} rad/s`,
+    textX,
+    textY,
+  );
+  textY += TEXT_LINE_HEIGHT;
+
+  ctx.fillText(`Mass: ${state.mass.toFixed(2)} kg`, textX, textY);
+  textY += TEXT_LINE_HEIGHT;
+
+  ctx.fillText(`Fuel Mass: ${state.fuelMass.toFixed(2)} kg`, textX, textY);
+}
+
+export function renderState(state: RocketState): void {
+  try {
+    const setup = setupCanvas();
+    if (!setup) return;
+
+    const { canvas, ctx } = setup;
+
+    renderBackground(ctx, canvas.width, canvas.height);
+    renderRocket(ctx, canvas.width, canvas.height, state);
+    renderStateText(ctx, state);
   } catch (error) {
     console.error("[renderState] Error rendering state:", error);
   }
