@@ -1,46 +1,34 @@
 import os
 import yaml
-from typing import Any, TypeVar, Optional, cast
-
-T = TypeVar("T")
+from typing import Any
 
 
 class Config:
-    def __init__(self, config_path: Optional[str] = None) -> None:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.config_path = config_path or os.path.join(base_dir, "config.yaml")
+    def __init__(self):
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        self.config_path = os.path.join(base_dir, "config.yaml")
         self._config = self._load_config()
 
     def _load_config(self) -> dict[str, Any]:
-        if not os.path.exists(self.config_path):
-            raise FileNotFoundError(f"Config file not found at {self.config_path}")
-        with open(self.config_path, "r") as f:
-            return yaml.safe_load(f) or {}
+        if not os.path.isfile(self.config_path):
+            raise FileNotFoundError(f"Config file not found: {self.config_path}")
+        try:
+            with open(self.config_path, "r") as f:
+                return yaml.safe_load(f) or {}
+        except yaml.YAMLError as e:
+            raise ValueError(f"Failed to parse YAML config: {e}")
 
-    def get(self, key_path: str, default: Optional[T] = None) -> Optional[T]:
-        """
-        Access nested config values using dot notation.
-
-        Example:
-            get("app.PORT", 8000) -> 8080
-        """
+    def get(self, key_path: str) -> Any:
         keys = key_path.split(".")
         val: Any = self._config
-        for key in keys:
-            if isinstance(val, dict) and key in val:
-                val = val[key]
-            else:
-                return default
-        return cast(Optional[T], val)
 
-    def as_dict(self) -> dict[str, Any]:
-        """
-        Get the entire config as a dictionary.
-        """
-        return self._config
+        for i, key in enumerate(keys):
+            if not isinstance(val, dict):
+                raise KeyError(
+                    f"Invalid config path: '{'.'.join(keys[:i])}' is not a dict."
+                )
+            if key not in val:
+                raise KeyError(f"Missing config key: '{'.'.join(keys[:i+1])}'")
+            val = val[key]
 
-    def __getitem__(self, key: str) -> Any:
-        return self._config[key]
-
-    def __repr__(self) -> str:
-        return f"<Config file={self.config_path} keys={list(self._config.keys())}>"
+        return val

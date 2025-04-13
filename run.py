@@ -14,7 +14,7 @@ async def main():
 
     app = make_app(settings, logger)
 
-    port = int(config.get("app.PORT") or 8000)
+    port = config.get("app.PORT") or 8080
     app.listen(port)
     logger.info(f"Application started on http://localhost:{port}")
 
