@@ -7,7 +7,6 @@ T = TypeVar("T")
 
 class Config:
     def __init__(self, config_path: Optional[str] = None) -> None:
-        # Determine the base directory (one level above the current file's directory)
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.config_path = config_path or os.path.join(base_dir, "config.yaml")
         self._config = self._load_config()
@@ -38,13 +37,6 @@ class Config:
         """
         Get the entire config as a dictionary.
         """
-        return self._config
-
-    def reload(self) -> dict[str, Any]:
-        """
-        Reload config from disk (e.g., if config.yaml changes at runtime).
-        """
-        self._config = self._load_config()
         return self._config
 
     def __getitem__(self, key: str) -> Any:

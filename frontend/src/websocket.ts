@@ -5,7 +5,7 @@ export class RocketWebSocket {
   private socket: WebSocket;
   private readonly url: string;
   private readonly stateEl: HTMLPreElement;
-  private isRunning: boolean = true;
+  private isRunning: boolean = false;
 
   constructor(wsUrl: string, stateElementId: string) {
     this.url = wsUrl;
@@ -46,6 +46,12 @@ export class RocketWebSocket {
   private handleMessage(event: MessageEvent): void {
     try {
       const data = JSON.parse(event.data);
+
+      if (data.message && data.message === "sim over") {
+        console.log("[RocketWebSocket] Simulation is over.");
+        return;
+      }
+
       const state: RocketState = data.state;
       renderState(state, this.stateEl);
     } catch (err) {

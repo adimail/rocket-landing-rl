@@ -1,4 +1,4 @@
-from backend.physics.rocket import Rocket
+from backend.simulation.physics.rocket import Rocket
 
 
 class RocketSimulator:
@@ -7,13 +7,10 @@ class RocketSimulator:
         self.dt = dt
         self.time = 0.0
         self.done = False
-        self.paused = False
 
     def step(self, action):
         if self.done:
             raise Exception("Simulation is over. Reset to start again.")
-        if self.paused:
-            return self.rocket.get_state(), 0.0, self.done
 
         throttle, gimbal = action
         self.rocket.apply_action(throttle, gimbal, self.dt)
@@ -29,13 +26,11 @@ class RocketSimulator:
         vx, vy = state["vx"], state["vy"]
         theta = state["theta"]
 
-        # Terminal condition: hit the ground
         if y <= 0.0:
             soft_landing = abs(vx) < 1.0 and abs(vy) < 2.0 and abs(theta) < 0.1
             reward = 100.0 if soft_landing else -100.0
             return reward, True
 
-        # Shaping reward to encourage upright + slow descent
         reward = -abs(vx) - abs(vy) - abs(theta)
         return reward, False
 
@@ -43,5 +38,4 @@ class RocketSimulator:
         self.rocket.reset()
         self.time = 0.0
         self.done = False
-        self.paused = True
         return self.rocket.get_state()
