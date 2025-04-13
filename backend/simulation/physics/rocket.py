@@ -1,18 +1,17 @@
 import numpy as np
-from .config import DEFAULT_STATE, DEFAULT_CONFIG
+from .config import get_initial_state, get_environment_config
 
 
 class Rocket:
-    def __init__(self, initial_state=None):
+    def __init__(self):
         try:
-            self.state = DEFAULT_STATE.copy()
-            if initial_state:
-                self.state.update(initial_state)
+            self.state = get_initial_state()
 
-            self.gravity = DEFAULT_CONFIG["gravity"]
-            self.thrust_power = DEFAULT_CONFIG["thrust_power"]
-            self.gimbal_limit = DEFAULT_CONFIG["gimbal_limit"]
-            self.fuel_consumption_rate = DEFAULT_CONFIG["fuel_consumption_rate"]
+            env_config = get_environment_config()
+            self.gravity = env_config["gravity"]
+            self.thrust_power = env_config["thrust_power"]
+            self.gimbal_limit = env_config["gimbal_limit"]
+            self.fuel_consumption_rate = env_config["fuel_consumption_rate"]
         except Exception as err:
             print("Error initializing Rocket:", err)
             raise
@@ -53,7 +52,7 @@ class Rocket:
 
     def reset(self):
         try:
-            self.state = DEFAULT_STATE.copy()
+            self.state = get_initial_state()
         except Exception as err:
             print("Error resetting Rocket:", err)
             raise

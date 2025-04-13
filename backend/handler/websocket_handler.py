@@ -20,7 +20,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         self.client_connected = True
 
         try:
-            state = self.sim.render()
+            state = self.sim.reset()
             self.send_json({"state": state, "time": self.sim.time, "initial": True})
         except Exception as e:
             self.logger.error(f"Failed to send initial state: {e}")
