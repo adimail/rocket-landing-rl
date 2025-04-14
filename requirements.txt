@@ -2,3 +2,6 @@ PyYAML
 tornado
 numpy
 pytest
+tqdm
+pandas
+matplotlib

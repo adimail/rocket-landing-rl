@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from typing import Union, List, Optional, Dict
 from datetime import datetime
+from tqdm import tqdm
 
 
 class SimulationLogEval:
@@ -30,6 +31,9 @@ class SimulationLogEval:
             "tab:olive",
             "tab:cyan",
         ]
+        self.log_pattern = re.compile(
+            r"^(?P<timestamp>[\d\-:, ]+) - .+? - DEBUG - StepLog: (?P<dict_data>\{.+\})$"
+        )
 
     def _ensure_directories(self):
         for path, must_exist in self.dirs.items():
@@ -47,13 +51,16 @@ class SimulationLogEval:
     def _parse_step_log_line(
         self, line: str
     ) -> tuple[Optional[datetime], Optional[dict]]:
-        pattern = r"^(?P<timestamp>[\d\-:, ]+) - .+? - DEBUG - StepLog: (?P<dict_data>\{.+\})$"
-        match = re.match(pattern, line)
+        match = self.log_pattern.match(line)
         if match:
             timestamp_str = match.group("timestamp").strip()
             try:
                 timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
-                step_data = ast.literal_eval(match.group("dict_data"))
+
+                dict_str = match.group("dict_data")
+                dict_str = dict_str.replace("np.float64(", "").replace(")", "")
+
+                step_data = ast.literal_eval(dict_str)
                 return timestamp, step_data
             except Exception as e:
                 print(f"[ERROR] Failed to parse log line at {timestamp_str}: {e}")
@@ -71,7 +78,6 @@ class SimulationLogEval:
                     if timestamp and data:
                         rocket_index = data["rocket_index"]
 
-                        # Initialize lists for this rocket if not already done
                         if rocket_index not in rocket_data:
                             rocket_data[rocket_index] = {
                                 "timestamps": [],
@@ -80,7 +86,6 @@ class SimulationLogEval:
                                 "actions": [],
                             }
 
-                        # Add data to appropriate lists
                         rocket_data[rocket_index]["timestamps"].append(timestamp)
                         rocket_data[rocket_index]["states"].append(data["state"])
                         rocket_data[rocket_index]["rewards"].append(data["reward"])
@@ -88,7 +93,6 @@ class SimulationLogEval:
                             data.get("action", {})
                         )
 
-            # Convert to DataFrames
             dataframes = {}
             for rocket_index, data in rocket_data.items():
                 if not data["timestamps"]:
@@ -100,7 +104,7 @@ class SimulationLogEval:
                 df = pd.concat([df_states, df_actions], axis=1)
                 df["timestamp"] = data["timestamps"]
                 df["reward"] = data["rewards"]
-                df["rocket_index"] = rocket_index  # Add rocket index as a column
+                df["rocket_index"] = rocket_index
                 df.set_index("timestamp", inplace=True)
                 dataframes[rocket_index] = df
 
@@ -121,7 +125,6 @@ class SimulationLogEval:
         state_keys: List[str],
         ylabel: List[str],
         output_dir: str,
-        base_filename: str,
     ):
         """Create plots for a single rocket"""
         num_keys = len(state_keys)
@@ -139,13 +142,11 @@ class SimulationLogEval:
             plt.tight_layout()
 
             output_path = os.path.join(
-                output_dir, f"{base_filename}_rocket_{rocket_index}_{state_keys[0]}.jpg"
+                output_dir,
+                f"rocket_{rocket_index}_{state_keys[0]}.png",  # Changed to png
             )
             plt.savefig(output_path)
             plt.close()
-            print(
-                f"[SUCCESS] Plot for rocket {rocket_index}, {state_keys[0]} saved to {output_path}"
-            )
         else:
             ncols = 3
             nrows = math.ceil(num_keys / ncols)
@@ -173,46 +174,11 @@ class SimulationLogEval:
             plt.tight_layout()
 
             output_path = os.path.join(
-                output_dir, f"{base_filename}_rocket_{rocket_index}_all_metrics.jpg"
+                output_dir,
+                f"R{rocket_index}.png",
             )
             plt.savefig(output_path)
             plt.close()
-            print(
-                f"[SUCCESS] Combined metrics plot for rocket {rocket_index} saved to {output_path}"
-            )
-
-    def _plot_combined_state(
-        self,
-        dataframes: Dict[int, pd.DataFrame],
-        state_key: str,
-        ylabel: str,
-        output_dir: str,
-        base_filename: str,
-    ):
-        """Create a combined plot for all rockets for a single state metric"""
-        plt.figure(figsize=(12, 6))
-
-        # Plot each rocket's data
-        for idx, (rocket_index, df) in enumerate(dataframes.items()):
-            if state_key in df.columns:
-                color = self.colors[idx % len(self.colors)]
-                plt.plot(
-                    df.index, df[state_key], label=f"Rocket {rocket_index}", color=color
-                )
-
-        plt.xlabel("Time")
-        plt.ylabel(ylabel)
-        plt.title(f"{state_key} over time - All Rockets")
-        plt.grid(True)
-        plt.legend()
-        plt.tight_layout()
-
-        output_path = os.path.join(
-            output_dir, f"{base_filename}_combined_{state_key}.jpg"
-        )
-        plt.savefig(output_path)
-        plt.close()
-        print(f"[SUCCESS] Combined plot for {state_key} saved to {output_path}")
 
     def _plot_all_metrics_combined(
         self,
@@ -220,7 +186,6 @@ class SimulationLogEval:
         state_keys: List[str],
         ylabel: List[str],
         output_dir: str,
-        base_filename: str,
     ):
         """Create combined plots for all metrics with all rockets"""
         ncols = 3
@@ -253,12 +218,9 @@ class SimulationLogEval:
         fig.supxlabel("Time")
         plt.tight_layout()
 
-        output_path = os.path.join(
-            output_dir, f"{base_filename}_all_rockets_all_metrics.jpg"
-        )
+        output_path = os.path.join(output_dir, f"all.png")
         plt.savefig(output_path)
         plt.close()
-        print(f"[SUCCESS] Combined all metrics plot saved to {output_path}")
 
     def _save_csv(self, dataframes: Dict[int, pd.DataFrame], log_file: str):
         # Create a directory for this log file
@@ -267,16 +229,26 @@ class SimulationLogEval:
         os.makedirs(log_dir, exist_ok=True)
 
         # Save a CSV for each rocket
-        for rocket_index, df in dataframes.items():
-            csv_filename = f"{base_filename}_rocket_{rocket_index}.csv"
-            csv_path = os.path.join(log_dir, csv_filename)
-            try:
-                df.round(2).to_csv(csv_path)
-                print(f"[SUCCESS] CSV for rocket {rocket_index} saved to {csv_path}")
-            except Exception as e:
-                print(
-                    f"[ERROR] Failed to save CSV for {log_file}, rocket {rocket_index}: {e}"
-                )
+        with tqdm(
+            dataframes.items(),
+            desc=f"Saving CSVs for {log_file}",
+            leave=False,
+            smoothing=0.5,  # Added smoothing
+            mininterval=0.05,  # Increased update frequency
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]",  # Improved bar format
+        ) as rocket_csv_progress:
+            for rocket_index, df in rocket_csv_progress:
+                csv_filename = f"R{rocket_index}.csv"
+                csv_path = os.path.join(log_dir, csv_filename)
+                try:
+                    df.round(2).to_csv(csv_path, index=True)
+                    rocket_csv_progress.set_description(
+                        f"Saving CSVs for {log_file} - Rocket {rocket_index}"
+                    )
+                except Exception as e:
+                    print(
+                        f"[ERROR] Failed to save CSV for {log_file}, rocket {rocket_index}: {e}"
+                    )
 
         # Also save a combined CSV with all rockets
         try:
@@ -287,11 +259,10 @@ class SimulationLogEval:
             combined_df = combined_df.reset_index()
             combined_df = combined_df.set_index(["timestamp", "rocket_index"])
 
-            combined_csv_path = os.path.join(
-                self.csv_dir, f"{base_filename}_combined.csv"
-            )
-            combined_df.round(2).to_csv(combined_csv_path)
-            print(f"[SUCCESS] Combined CSV saved to {combined_csv_path}")
+            combined_csv_path = os.path.join(log_dir, f"combined.csv")
+            combined_df.round(2).to_csv(
+                combined_csv_path, index=True
+            )  # Explicitly save index
         except Exception as e:
             print(f"[ERROR] Failed to save combined CSV for {log_file}: {e}")
 
@@ -316,13 +287,17 @@ class SimulationLogEval:
         elif isinstance(ylabel, list) and len(ylabel) != len(state_keys):
             raise ValueError("Length of 'ylabel' must match the number of 'state_keys'")
 
-        for log_file in log_files:
+        for log_file in tqdm(
+            log_files,
+            desc="Processing log files",
+            smoothing=0.5,  # Added smoothing
+            mininterval=0.05,  # Increased update frequency
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]",  # Improved bar format
+        ):  # Use tqdm here for log files
             log_path = os.path.join(self.log_dir, log_file)
-            print(f"[INFO] Processing '{log_path}'...")
             dataframes = self._extract_log_data(log_path)
 
             if dataframes:
-                # Save CSVs
                 self._save_csv(dataframes, log_file)
 
                 # Create a subdirectory for this log's plots
@@ -332,28 +307,31 @@ class SimulationLogEval:
 
                 try:
                     # 1. Create individual plots for each rocket
-                    for rocket_index, df in dataframes.items():
-                        self._plot_state_for_single_rocket(
-                            df,
-                            rocket_index,
-                            state_keys,
-                            ylabel,
-                            plots_dir,
-                            base_filename,
-                        )
+                    with tqdm(
+                        dataframes.items(),
+                        desc=f"Creating plots for {log_file}",
+                        leave=False,
+                        smoothing=0.5,  # Added smoothing
+                        mininterval=0.05,  # Increased update frequency
+                        bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]",  # Improved bar format
+                    ) as rocket_plot_progress:
+                        for rocket_index, df in rocket_plot_progress:
+                            self._plot_state_for_single_rocket(
+                                df,
+                                rocket_index,
+                                state_keys,
+                                ylabel,
+                                plots_dir,
+                            )
+                            rocket_plot_progress.set_description(
+                                f"Creating plots for {log_file} - Rocket {rocket_index}"
+                            )
 
-                    # 2. Create combined plots for each metric
-                    for i, key in enumerate(state_keys):
-                        self._plot_combined_state(
-                            dataframes, key, ylabel[i], plots_dir, base_filename
-                        )
-
-                    # 3. Create a master plot with all metrics and all rockets
+                    # 2. Create a master plot with all metrics and all rockets
                     self._plot_all_metrics_combined(
-                        dataframes, state_keys, ylabel, plots_dir, base_filename
+                        dataframes, state_keys, ylabel, plots_dir
                     )
 
-                    print(f"[SUCCESS] All plots for {log_file} saved to {plots_dir}")
                 except Exception as e:
                     print(f"[ERROR] Plotting failed for {log_file}: {e}")
 

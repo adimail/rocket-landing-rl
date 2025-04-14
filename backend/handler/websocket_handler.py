@@ -101,6 +101,12 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 )
                 self.logger.info(f"Simulation over. Landing are {landing_messages}")
 
+                if self.config.get("env.loop"):
+                    self.logger.info("[LOOP] Restarting simulation...")
+                    states = self.sim.reset()
+                    self.sim.start(self.send_state_update)
+                    self.send_json({"state": states, "restart": True})
+
             else:
                 self.io_loop.add_callback(
                     self.send_json,
