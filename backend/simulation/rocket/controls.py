@@ -17,8 +17,7 @@ class RocketControls:
         """
         action: Dictionary or tuple containing:
           - throttle (number [0.0, 1.0])
-          - gimbalAngleX (degrees)
-          Optionally, gimbalAngleY can be included but is ignored for the 2D sim.
+          - cold_gas_thrust
         """
         try:
             if self.touchdown:
@@ -26,12 +25,11 @@ class RocketControls:
 
             if isinstance(action, dict):
                 throttle = action.get("throttle", 0.0)
-                gimbal_deg = action.get("gimbalAngleX", 0.0)
                 cold_gas_control = action.get("coldGasControl", 0.0)
             else:
-                throttle, gimbal_deg, cold_gas_control = action
+                throttle, cold_gas_control = action
 
-            self.rocket.apply_action(throttle, gimbal_deg, cold_gas_control, self.dt)
+            self.rocket.apply_action(throttle, cold_gas_control, self.dt)
 
             state = self.rocket.get_state()
             reward, self.touchdown = self.compute_reward(state)

@@ -64,6 +64,6 @@ def get_environment_config():
     return {
         "gravity": cfg.get("env.gravity") or -9.81,
         "thrust_power": cfg.get("env.thrust_power") or 20.0,
-        "gimbal_limit": cfg.get("env.gimbal_limit_deg") or 15,
+        "cold_gas_thrust_power": cfg.get("env.cold_gas_thrust_power") or 15,
         "fuel_consumption_rate": cfg.get("env.fuel_consumption_rate") or 0.1,
     }

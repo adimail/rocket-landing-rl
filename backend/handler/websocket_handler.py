@@ -42,13 +42,10 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 return
 
             throttle = data.get("throttle", 0.0)
-            gimbal = data.get("gimbal", 0.0)
             cold_gas_control = data.get("coldGasControl", 0.0)
 
             if not self.sim.paused and not self.sim.rocket.touchdown:
-                state, reward, done = self.sim.step(
-                    (throttle, gimbal, cold_gas_control)
-                )
+                state, reward, done = self.sim.step((throttle, cold_gas_control))
                 self.send_json(
                     {
                         "state": state,
@@ -125,7 +122,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                     time.sleep(self.sim.dt)
                     continue
 
-                state, reward, done = self.sim.step((0.0, 0.0, 0.0))
+                state, reward, done = self.sim.step((0.0, 0.0))
                 step_counter += 1
 
                 if step_counter >= steps_per_message:

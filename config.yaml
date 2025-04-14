@@ -5,7 +5,6 @@ env:
   gravity: -9.81  # m/s²
   thrust_power: 20.0 # Newtons
   cold_gas_thrust_power: 0.5 # Torque
-  gimbal_limit_deg: 15 # degrees
   fuel_consumption_rate: 0.1 # kg/second
   time_step: 0.2 # seconds
   safeSpeedThreshold: 10 # m/s

@@ -1,6 +1,7 @@
 from backend.simulation.rocket.controls import RocketControls
 from backend.logger import Logger
 from datetime import datetime
+from typing import Tuple
 
 
 class SimulationController:
@@ -79,7 +80,7 @@ class SimulationController:
             self._log("exception", f"Simulation pause failed: {e}")
             raise
 
-    def step(self, action=(0.0, 0.0, 0.0)):
+    def step(self, action: Tuple[float, float]) -> Tuple[dict, float, bool]:
         try:
             if self.paused or self.rocket.touchdown:
                 state = self.rocket.rocket.get_state().copy()
@@ -93,8 +94,7 @@ class SimulationController:
                 "action": (
                     {
                         "throttle": action[0],
-                        "gimbal": action[1],
-                        "cold_gas_control": action[2],
+                        "cold_gas_control": action[1],
                     }
                     if self.log_action
                     else None

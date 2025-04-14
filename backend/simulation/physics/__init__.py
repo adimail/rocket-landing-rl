@@ -15,13 +15,12 @@ class PhysicsEngine:
         return np.array([0.0, mass * self.gravity])
 
     def calculate_thrust_force_vector(
-        self, throttle: float, angle_degrees: float, gimbal_degrees: float
+        self, throttle: float, angle_degrees: float
     ) -> np.ndarray:
         """Calculates the thrust force vector. Accepts angles in degrees, uses radians internally."""
         if throttle > 0:
             angle_radians = np.deg2rad(angle_degrees)
-            gimbal_radians = np.deg2rad(gimbal_degrees)
-            thrust_direction_radians = angle_radians + gimbal_radians
+            thrust_direction_radians = angle_radians
             fx = throttle * self.thrust_power * np.sin(thrust_direction_radians)
             fy = throttle * self.thrust_power * np.cos(thrust_direction_radians)
             return np.array([fx, fy])
@@ -49,12 +48,11 @@ class PhysicsEngine:
         mass: float,
         throttle: float,
         angle: float,
-        gimbal: float,
         state: dict,
     ) -> np.ndarray:
         """Calculates the net force vector acting on the rocket, including drag."""
         gravity = self.calculate_gravity_force(mass)
-        thrust = self.calculate_thrust_force_vector(throttle, angle, gimbal)
+        thrust = self.calculate_thrust_force_vector(throttle, angle)
         drag = self.calculate_drag_force(state)
         return gravity + thrust + drag
 
@@ -72,11 +70,8 @@ class PhysicsEngine:
         state["x"] += state["vx"] * dt
         state["y"] += state["vy"] * dt
 
-    def calculate_angular_acceleration(
-        self, gimbal: float, cold_gas: float, throttle: float
-    ) -> float:
-        """Calculates a simplified angular acceleration based on gimbal."""
-        return gimbal * throttle * 2.0 + cold_gas * self.cold_gas_thrust_power
+    def calculate_angular_acceleration(self, cold_gas: float, throttle: float) -> float:
+        return throttle * 2.0 + cold_gas * self.cold_gas_thrust_power
 
     def update_angular_motion(self, state: dict, dt: float) -> None:
         """Updates angle and angular velocity using Euler method."""
