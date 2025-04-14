@@ -23,4 +23,4 @@ export const TEXT_LINE_HEIGHT = 15;
 export const SPEED_THRESHOLD = 5;
 export const ANGLE_THRESHOLD = 10;
 export const TOTAL_EXPLOSION_FRAMES = 25;
-export const EXPLOSION_FRAME_DURATION = 120;
+export const EXPLOSION_FRAME_DURATION = 30;

@@ -36,8 +36,8 @@ function animationLoop(timestamp: number): void {
   renderBackground(ctx, canvas.width, canvas.height);
   renderStateText(currentStates);
 
-  const canvasCenterX = canvas.width / 2;
   const canvasBottom = canvas.height - Constants.GROUND_OFFSET;
+  const canvasCenterX = canvas.width / 2;
 
   currentStates.forEach((state, index) => {
     const landingX = canvasCenterX + state.x * Constants.SCALE_FACTOR;
@@ -48,7 +48,6 @@ function animationLoop(timestamp: number): void {
       explosionFrameCounters[index] = Math.floor(
         elapsedTime / Constants.EXPLOSION_FRAME_DURATION,
       );
-
       if (explosionFrameCounters[index] < Constants.TOTAL_EXPLOSION_FRAMES) {
         renderExplosion(ctx, explosionFrameCounters[index], landingX, landingY);
       } else {
@@ -60,14 +59,7 @@ function animationLoop(timestamp: number): void {
         );
       }
     } else {
-      renderRocket(
-        ctx,
-        canvas.width,
-        canvas.height,
-        state,
-        index,
-        currentStates?.length ?? 1,
-      );
+      renderRocket(ctx, canvas.width, canvas.height, state);
     }
   });
 
@@ -80,7 +72,6 @@ export function renderStates(
 ): void {
   try {
     currentStates = states;
-
     if (states.length !== areCrashed.length) {
       explosionFrameCounters = new Array(states.length).fill(0);
       explosionStartTimes = new Array(states.length).fill(0);

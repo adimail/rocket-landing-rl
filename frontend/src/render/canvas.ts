@@ -56,19 +56,15 @@ export function renderRocket(
   canvasWidth: number,
   canvasHeight: number,
   state: RocketState,
-  rocketIndex: number,
-  numRockets: number,
 ): void {
   const rocketCenterX = Constants.ROCKET_WIDTH / 2;
   const rocketCenterY = Constants.ROCKET_HEIGHT / 2;
   const canvasBottom = canvasHeight - Constants.GROUND_OFFSET;
-
-  const spacingFactor = canvasWidth / (numRockets + 1);
-  const rocketCanvasX = spacingFactor * (rocketIndex + 1);
+  const canvasCenterX = canvasWidth / 2;
 
   ctx.save();
   ctx.translate(
-    rocketCanvasX + state.x * Constants.SCALE_FACTOR,
+    canvasCenterX + state.x * Constants.SCALE_FACTOR,
     canvasBottom - state.y * Constants.SCALE_FACTOR,
   );
   ctx.rotate((Math.PI / 180) * state.angle);
@@ -91,14 +87,11 @@ export function renderExplosion(
   try {
     const frameWidth = explosionImage.width / Constants.TOTAL_EXPLOSION_FRAMES;
     const frameHeight = explosionImage.height;
-
     const explosionScale = 1;
     const scaledWidth = frameWidth * explosionScale;
     const scaledHeight = frameHeight * explosionScale;
-
     const explosionX = landingX - scaledWidth / 2;
     const explosionY = landingY - scaledHeight / 2 - 20;
-
     ctx.drawImage(
       explosionImage,
       explosionFrame * frameWidth,
