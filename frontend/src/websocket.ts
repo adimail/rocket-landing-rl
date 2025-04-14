@@ -40,13 +40,18 @@ export class RocketWebSocket {
     try {
       const data = JSON.parse(event.data);
 
-      if (data.message && data.message === "sim over") {
-        console.log("[RocketWebSocket] Simulation is over.");
-        return;
+      if (data.landing) {
+        if (data.landing === "safe") {
+          console.log("[RocketWebSocket] Landing was safe!");
+        } else if (data.landing === "unsafe") {
+          console.log("[RocketWebSocket] Landing was unsafe!");
+        }
       }
 
-      const state: RocketState = data.state;
-      renderState(state);
+      if (data.state) {
+        const state: RocketState = data.state;
+        renderState(state, data.landing);
+      }
     } catch (err) {
       console.error("[RocketWebSocket] Failed to parse message:", err);
     }

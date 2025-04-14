@@ -1,31 +1,22 @@
 import type { RocketState } from "../types";
-import rocketImageSrc from "../assets/booster.webp";
-import marsbaseImageSrc from "../assets/landingsite.webp";
+import * as Constants from "./constants";
+import { backgroundImg, rocketImage, explosionImage } from "./constants";
 
-const rocketImage = new Image();
-rocketImage.src = rocketImageSrc;
-const marsbaseImage = new Image();
-marsbaseImage.src = marsbaseImageSrc;
-
-const DEFAULT_ASPECT_RATIO = 0.75;
-const ROCKET_WIDTH = 30;
-const ROCKET_HEIGHT = 60;
-const SCALE_FACTOR = 2;
-const GROUND_OFFSET = 50;
-const TEXT_PADDING_X = 10;
-const TEXT_INITIAL_Y = 20;
-const TEXT_LINE_HEIGHT = 15;
+let currentState: RocketState | null = null;
+let explosionFrameCounter = 0;
+let explosionStartTime = 0;
+let isCrashed = false;
+let animationFrameId: number | null = null;
 
 function resizeCanvas(canvas: HTMLCanvasElement, container: HTMLElement): void {
   try {
     canvas.width = container.clientWidth;
-
-    if (marsbaseImage.naturalWidth && marsbaseImage.naturalHeight) {
+    if (backgroundImg.naturalWidth && backgroundImg.naturalHeight) {
       const aspectRatio =
-        marsbaseImage.naturalHeight / marsbaseImage.naturalWidth;
+        backgroundImg.naturalHeight / backgroundImg.naturalWidth;
       canvas.height = canvas.width * aspectRatio;
     } else {
-      canvas.height = canvas.width * DEFAULT_ASPECT_RATIO;
+      canvas.height = canvas.width * Constants.DEFAULT_ASPECT_RATIO;
     }
   } catch (error) {
     console.error("[resizeCanvas] Error resizing canvas:", error);
@@ -44,16 +35,13 @@ function setupCanvas(): {
       console.error("[setupCanvas] Canvas not found.");
       return null;
     }
-
     const container = canvas.parentElement || document.body;
     resizeCanvas(canvas, container);
-
     const ctx = canvas.getContext("2d");
     if (!ctx) {
       console.error("[setupCanvas] Canvas context not available.");
       return null;
     }
-
     return { canvas, ctx };
   } catch (error) {
     console.error("[setupCanvas] Error setting up canvas:", error);
@@ -66,7 +54,7 @@ function renderBackground(
   canvasWidth: number,
   canvasHeight: number,
 ): void {
-  ctx.drawImage(marsbaseImage, 0, 0, canvasWidth, canvasHeight);
+  ctx.drawImage(backgroundImg, 0, 0, canvasWidth, canvasHeight);
 }
 
 function renderRocket(
@@ -75,28 +63,23 @@ function renderRocket(
   canvasHeight: number,
   state: RocketState,
 ): void {
-  const rocketCenterX = ROCKET_WIDTH / 2;
-  const rocketCenterY = ROCKET_HEIGHT / 2;
+  const rocketCenterX = Constants.ROCKET_WIDTH / 2;
+  const rocketCenterY = Constants.ROCKET_HEIGHT / 2;
   const canvasCenterX = canvasWidth / 2;
-  const canvasBottom = canvasHeight - GROUND_OFFSET;
-
+  const canvasBottom = canvasHeight - Constants.GROUND_OFFSET;
   ctx.save();
-
   ctx.translate(
-    canvasCenterX + state.x * SCALE_FACTOR,
-    canvasBottom - state.y * SCALE_FACTOR,
+    canvasCenterX + state.x * Constants.SCALE_FACTOR,
+    canvasBottom - state.y * Constants.SCALE_FACTOR,
   );
-
   ctx.rotate(state.angle);
-
   ctx.drawImage(
     rocketImage,
     -rocketCenterX,
     -rocketCenterY,
-    ROCKET_WIDTH,
-    ROCKET_HEIGHT,
+    Constants.ROCKET_WIDTH,
+    Constants.ROCKET_HEIGHT,
   );
-
   ctx.restore();
 }
 
@@ -106,62 +89,172 @@ function renderStateText(
 ): void {
   ctx.font = "12px monospace";
   ctx.fillStyle = "#eee";
-
-  let textX = TEXT_PADDING_X;
-  let textY = TEXT_INITIAL_Y;
-
+  ctx.textAlign = "left";
+  let textX = Constants.TEXT_PADDING_L;
+  let textY = Constants.TEXT_INITIAL_Y;
   ctx.fillText(
     `Position: x=${state.x.toFixed(2)}, y=${state.y.toFixed(2)}`,
     textX,
     textY,
   );
-  textY += TEXT_LINE_HEIGHT;
-
+  textY += Constants.TEXT_LINE_HEIGHT;
   ctx.fillText(
     `Velocity: vx=${state.vx.toFixed(2)}, vy=${state.vy.toFixed(2)}`,
     textX,
     textY,
   );
-  textY += TEXT_LINE_HEIGHT;
-
+  textY += Constants.TEXT_LINE_HEIGHT;
   ctx.fillText(
     `Acceleration: ax=${state.ax.toFixed(2)}, ay=${state.ay.toFixed(2)}`,
     textX,
     textY,
   );
-  textY += TEXT_LINE_HEIGHT;
-
+  textY += Constants.TEXT_LINE_HEIGHT;
   ctx.fillText(
     `Angle: ${((state.angle * 180) / Math.PI).toFixed(2)} deg`,
     textX,
     textY,
   );
-  textY += TEXT_LINE_HEIGHT;
-
+  textY += Constants.TEXT_LINE_HEIGHT;
   ctx.fillText(
     `Angular Vel: ω=${state.angularVelocity.toFixed(2)} rad/s`,
     textX,
     textY,
   );
-  textY += TEXT_LINE_HEIGHT;
-
+  textY += Constants.TEXT_LINE_HEIGHT;
   ctx.fillText(`Mass: ${state.mass.toFixed(2)} kg`, textX, textY);
-  textY += TEXT_LINE_HEIGHT;
-
+  textY += Constants.TEXT_LINE_HEIGHT;
   ctx.fillText(`Fuel Mass: ${state.fuelMass.toFixed(2)} kg`, textX, textY);
+  ctx.textAlign = "right";
+  const rightTextX = ctx.canvas.width - Constants.TEXT_PADDING_R;
+  let rightTextY = Constants.TEXT_INITIAL_Y;
+  ctx.fillText(`Speed: ${state.speed.toFixed(2)} m/s`, rightTextX, rightTextY);
+  rightTextY += Constants.TEXT_LINE_HEIGHT;
+  ctx.fillText(
+    `Relative Angle: ${state.relativeAngle.toFixed(2)} deg`,
+    rightTextX,
+    rightTextY,
+  );
 }
 
-export function renderState(state: RocketState): void {
+function renderExplosion(
+  ctx: CanvasRenderingContext2D,
+  explosionFrame: number,
+  landingX: number,
+  landingY: number,
+): void {
   try {
-    const setup = setupCanvas();
-    if (!setup) return;
+    const frameWidth = explosionImage.width / Constants.TOTAL_EXPLOSION_FRAMES;
+    const frameHeight = explosionImage.height;
 
-    const { canvas, ctx } = setup;
+    const explosionScale = 1;
+    const scaledWidth = frameWidth * explosionScale;
+    const scaledHeight = frameHeight * explosionScale;
 
-    renderBackground(ctx, canvas.width, canvas.height);
-    renderRocket(ctx, canvas.width, canvas.height, state);
-    renderStateText(ctx, state);
+    const explosionX = landingX - scaledWidth / 2;
+    const explosionY = landingY - scaledHeight / 2 - 20;
+
+    ctx.drawImage(
+      explosionImage,
+      explosionFrame * frameWidth,
+      0,
+      frameWidth,
+      frameHeight,
+      explosionX,
+      explosionY,
+      scaledWidth,
+      scaledHeight,
+    );
   } catch (error) {
-    console.error("[renderState] Error rendering state:", error);
+    console.error("[renderExplosion] Error rendering explosion:", error);
+  }
+}
+
+function animationLoop(timestamp: number): void {
+  if (!currentState) {
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
+    return;
+  }
+
+  const setup = setupCanvas();
+  if (!setup) {
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
+    return;
+  }
+
+  const { canvas, ctx } = setup;
+  renderBackground(ctx, canvas.width, canvas.height);
+  renderStateText(ctx, currentState);
+
+  const canvasCenterX = canvas.width / 2;
+  const canvasBottom = canvas.height - Constants.GROUND_OFFSET;
+  const landingX = canvasCenterX + currentState.x * Constants.SCALE_FACTOR;
+  const landingY = canvasBottom - currentState.y * Constants.SCALE_FACTOR;
+
+  if (isCrashed) {
+    const elapsedTime = timestamp - explosionStartTime;
+    explosionFrameCounter = Math.floor(
+      elapsedTime / Constants.EXPLOSION_FRAME_DURATION,
+    );
+
+    if (explosionFrameCounter < Constants.TOTAL_EXPLOSION_FRAMES) {
+      renderExplosion(ctx, explosionFrameCounter, landingX, landingY);
+      animationFrameId = requestAnimationFrame(animationLoop);
+    } else {
+      renderExplosion(
+        ctx,
+        Constants.TOTAL_EXPLOSION_FRAMES - 1,
+        landingX,
+        landingY,
+      );
+      animationFrameId = requestAnimationFrame(animationLoop);
+    }
+  } else {
+    renderRocket(ctx, canvas.width, canvas.height, currentState);
+    animationFrameId = requestAnimationFrame(animationLoop);
+  }
+}
+
+export function renderState(
+  state: RocketState,
+  landing?: "safe" | "unsafe",
+): void {
+  try {
+    currentState = state;
+
+    if (landing) {
+      if (landing === "unsafe" && !isCrashed) {
+        isCrashed = true;
+        explosionFrameCounter = 0;
+        explosionStartTime = performance.now();
+      } else if (landing === "safe") {
+        isCrashed = false;
+      }
+    } else {
+      const hasCrashed =
+        state.y <= 0 &&
+        (state.speed > Constants.SPEED_THRESHOLD ||
+          Math.abs(state.relativeAngle) > Constants.ANGLE_THRESHOLD);
+      if (hasCrashed && !isCrashed) {
+        isCrashed = true;
+        explosionFrameCounter = 0;
+        explosionStartTime = performance.now();
+      }
+      if (isCrashed && state.y > 0) {
+        isCrashed = false;
+      }
+    }
+
+    if (animationFrameId === null) {
+      animationFrameId = requestAnimationFrame(animationLoop);
+    }
+  } catch (error) {
+    console.error("[renderState] Error starting render:", error);
   }
 }

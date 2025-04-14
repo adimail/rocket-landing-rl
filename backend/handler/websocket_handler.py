@@ -89,15 +89,35 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 if self.sim.rocket.touchdown:
                     if not sent_sim_over:
                         state = self.sim.render()
-                        self.io_loop.add_callback(
-                            self.send_json,
-                            {
-                                "message": "sim over",
-                                "state": state,
-                                "done": True,
-                            },
-                        )
-                        self.logger.info("Simulation over.")
+                        try:
+                            safeSpeedThreshold = self.sim.rocket.config.get(
+                                "env.safeSpeedThreshold"
+                            )
+                            safeAngleThreshold = self.sim.rocket.config.get(
+                                "env.safeAngleThreshold"
+                            )
+
+                            is_safe = (
+                                state["speed"] <= safeSpeedThreshold
+                                and state["relativeAngle"] <= safeAngleThreshold
+                            )
+
+                            landingMessage = "safe" if is_safe else "unsafe"
+
+                            self.io_loop.add_callback(
+                                self.send_json,
+                                {
+                                    "message": "Simulation over",
+                                    "landing": landingMessage,
+                                    "state": state,
+                                    "done": True,
+                                },
+                            )
+                            self.logger.info(
+                                f"Simulation over. Landing is {landingMessage}"
+                            )
+                        except Exception as e:
+                            self.logger.error(f"Error during safe landing check: {e}")
                         sent_sim_over = True
                     time.sleep(self.sim.dt)
                     continue

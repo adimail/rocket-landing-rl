@@ -54,7 +54,18 @@ class Rocket:
 
     def get_state(self):
         try:
-            return self.state.copy()
+            state = self.state.copy()
+
+            vx = state["vx"]
+            vy = state["vy"]
+            speed = np.sqrt(vx**2 + vy**2)
+            state["speed"] = float(speed)
+
+            angle_degrees = np.degrees(state["angle"])
+            relative_angle_deg = abs(angle_degrees)
+            state["relativeAngle"] = float(relative_angle_deg)
+
+            return state
         except Exception as err:
             print("Error getting state:", err)
             raise

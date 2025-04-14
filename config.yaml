@@ -7,11 +7,13 @@ env:
   gimbal_limit_deg: 15
   fuel_consumption_rate: 0.1
   time_step: 0.2
+  safeSpeedThreshold: 10
+  safeAngleThreshold: 5
 
 rocket:
   position_limits:
     x: [-50.0, 50.0]
-    y: [150.0, 190.0]
+    y: [200.0, 230.0]
   velocity_limits:
     vx: [-3.0, -1.0]
     vy: [-13.0, -7.0]

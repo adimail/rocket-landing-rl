@@ -9,6 +9,9 @@ export type RocketState = {
   angularVelocity: number;
   mass: number;
   fuelMass: number;
+
+  speed: number;
+  relativeAngle: number;
 };
 
 export type RocketControl = {
