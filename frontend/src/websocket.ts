@@ -57,11 +57,27 @@ export class RocketWebSocket {
     }
   }
 
-  private attachUIHandlers(): void {
+  private async attachUIHandlers(): Promise<void> {
     const startPauseBtn = document.getElementById("start-pause-btn");
     const restartBtn = document.getElementById("restart-btn");
+    const speedSlider = document.getElementById(
+      "speed-slider",
+    ) as HTMLInputElement;
+    const speedValue = document.getElementById("speed-value");
 
-    if (!startPauseBtn || !restartBtn) return;
+    if (!startPauseBtn || !restartBtn || !speedSlider || !speedValue) return;
+
+    try {
+      const res = await fetch("/api/speed");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const speed = parseFloat(data.speed);
+
+      speedSlider.value = speed.toString();
+      speedValue.textContent = `${speed.toFixed(1)}x`;
+    } catch (err) {
+      console.error("[RocketWebSocket] Failed to fetch initial speed:", err);
+    }
 
     startPauseBtn.addEventListener("click", () => {
       this.isRunning = !this.isRunning;
@@ -75,6 +91,12 @@ export class RocketWebSocket {
       startPauseBtn.textContent = "Start";
       this.sendCommand("restart");
     });
+
+    speedSlider.addEventListener("input", () => {
+      const speed = parseFloat(speedSlider.value);
+      speedValue.textContent = `${speed.toFixed(1)}x`;
+      this.sendSpeed(speed);
+    });
   }
 
   private sendCommand(command: "start" | "pause" | "restart") {
@@ -82,6 +104,14 @@ export class RocketWebSocket {
       this.socket.send(JSON.stringify({ command }));
     } catch (err) {
       console.error("[RocketWebSocket] Failed to send command:", err);
+    }
+  }
+
+  private sendSpeed(speed: number): void {
+    try {
+      this.socket.send(JSON.stringify({ speed }));
+    } catch (err) {
+      console.error("[RocketWebSocket] Failed to send speed:", err);
     }
   }
 

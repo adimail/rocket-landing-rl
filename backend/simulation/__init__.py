@@ -23,6 +23,8 @@ class SimulationController:
             self.state_callback = None
             self.current_action = (0.0, 0.0)
 
+            self.sim_speed = max(self.rocket.config.get("env.speed"), 10) or 1
+
             self._log("info", "SimulationController started")
         except Exception as e:
             self._log("exception", f"Failed to initialize SimulationController: {e}")
@@ -107,18 +109,9 @@ class SimulationController:
         self.current_action = action
 
     async def _simulation_loop(self):
-        step_counter = 0
-        steps_per_message = int(0.1 / self.dt)
-
         while self._running and not self.paused and not self.rocket.touchdown:
             try:
                 state, reward, done = self.step(self.current_action)
-                step_counter += 1
-
-                if step_counter >= steps_per_message:
-                    if self.state_callback:
-                        self.state_callback(state, reward, done)
-                    step_counter = 0
 
                 if done:
                     self._running = False
@@ -126,7 +119,10 @@ class SimulationController:
                         self.state_callback(state, reward, done)
                     break
 
-                await asyncio.sleep(self.dt)
+                if self.state_callback:
+                    self.state_callback(state, reward, done)
+
+                await asyncio.sleep(self.dt * 1 / self.sim_speed)
 
             except Exception as e:
                 self._log("exception", f"Error in simulation loop: {e}")

@@ -36,6 +36,11 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.handle_command(command)
                 return
 
+            if "speed" in data:
+                speed = float(data["speed"])
+                self.sim.sim_speed = max(speed, 0.01)
+                return
+
             throttle = data.get("throttle", 0.0)
             cold_gas_control = data.get("coldGasControl", 0.0)
 
@@ -65,7 +70,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def send_state_update(self, state, reward, done):
         try:
-            if done and not hasattr(self, "simulation_over_sent"):
+            if done:
                 safeSpeedThreshold = self.sim.rocket.config.get(
                     "env.safeSpeedThreshold"
                 )
@@ -89,7 +94,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                     },
                 )
                 self.logger.info(f"Simulation over. Landing is {landingMessage}")
-                setattr(self, "simulation_over_sent", True)
 
             else:
                 self.io_loop.add_callback(
