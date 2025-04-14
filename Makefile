@@ -1,16 +1,17 @@
 run:
 	python3 run.py
 
-LOGS_DIR := $(CURDIR)/logs
+DIRS_TO_CLEAN := $(CURDIR)/logs $(CURDIR)/output
 
 clean:
-	@if [ -d "$(LOGS_DIR)" ]; then \
-		echo "Removing logs directory: $(LOGS_DIR)"; \
-		rm -rf "$(LOGS_DIR)"; \
-	else \
-		echo "No logs directory to clean."; \
-	fi
-
+	@for dir in $(DIRS_TO_CLEAN); do \
+		if [ -d "$$dir" ]; then \
+			echo "Removing directory: $$dir"; \
+			rm -rf "$$dir"; \
+		else \
+			echo "No directory to clean at: $$dir"; \
+		fi \
+	done
 
 build:
 	@echo "Building frontend..."
@@ -19,6 +20,9 @@ build:
 dev:
 	@echo "Starting dev server..."
 	cd frontend && npm run dev
+
+eval:
+	python3 scripts/logeval.py
 
 install:
 	@echo "Setting up Python virtual environment..."

@@ -10,20 +10,13 @@ class SimulationController:
             self.log_action = log_action
             self.log_reward = log_reward
 
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            log_dir = "logs/simulations"
-            log_filename = f"{timestamp}.log"
-
-            self.logger = Logger(
-                file_name=log_filename,
-                log_dir=log_dir,
-                stream_handler=False,
-            ).get_logger()
+            self.logger = None
+            self._setup_new_logger()
 
             self.rocket = RocketControls()
             self.dt = self.rocket.dt
             self.paused = True
-            self.rocket.touchdown
+            self.rocket.touchdown = False
 
             self._log("info", "SimulationController started")
         except Exception as e:
@@ -34,9 +27,30 @@ class SimulationController:
         if hasattr(self.logger, level):
             getattr(self.logger, level)(msg)
 
+    def _setup_new_logger(self):
+        try:
+            if self.logger:
+                for handler in self.logger.handlers:
+                    handler.close()
+                self.logger.handlers.clear()
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_dir = "logs/simulations"
+            log_filename = f"{timestamp}.log"
+
+            self.logger = Logger(
+                file_name=log_filename,
+                log_dir=log_dir,
+                stream_handler=False,
+            ).get_logger()
+        except Exception as e:
+            print(f"Logger setup failed: {e}")
+            raise
+
     def reset(self):
         try:
             self._log("info", "Resetting simulation...")
+            self._setup_new_logger()
             state = self.rocket.reset()
             self.paused = True
             self.rocket.touchdown = False
@@ -71,19 +85,19 @@ class SimulationController:
                 state = self.rocket.rocket.get_state().copy()
                 return state, 0.0, self.rocket.touchdown
 
-            if self.log_action:
-                self._log(
-                    "debug", f"Action: throttle={action[0]:.3f}, gimbal={action[1]:.3f}"
-                )
-
             state, reward, sim_done = self.rocket.step(action)
             self.rocket.touchdown = sim_done
 
-            if self.log_state:
-                self._log("debug", f"State: {state}")
-
-            if self.log_reward:
-                self._log("debug", f"Reward: {reward:.5f}")
+            log_entry = {
+                "state": state if self.log_state else None,
+                "action": (
+                    {"throttle": action[0], "gimbal": action[1]}
+                    if self.log_action
+                    else None
+                ),
+                "reward": reward if self.log_reward else None,
+            }
+            self._log("debug", f"StepLog: {log_entry}")
 
             return state, reward, self.rocket.touchdown
         except Exception as e:
