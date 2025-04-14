@@ -72,7 +72,7 @@ function renderRocket(
     canvasCenterX + state.x * Constants.SCALE_FACTOR,
     canvasBottom - state.y * Constants.SCALE_FACTOR,
   );
-  ctx.rotate(state.angle);
+  ctx.rotate((Math.PI / 180) * state.angle);
   ctx.drawImage(
     rocketImage,
     -rocketCenterX,
@@ -110,14 +110,10 @@ function renderStateText(
     textY,
   );
   textY += Constants.TEXT_LINE_HEIGHT;
-  ctx.fillText(
-    `Angle: ${((state.angle * 180) / Math.PI).toFixed(2)} deg`,
-    textX,
-    textY,
-  );
+  ctx.fillText(`Angle: ${state.angle.toFixed(2)} deg`, textX, textY);
   textY += Constants.TEXT_LINE_HEIGHT;
   ctx.fillText(
-    `Angular Vel: ω=${state.angularVelocity.toFixed(2)} rad/s`,
+    `Angular Vel: ω=${state.angularVelocity.toFixed(2)} deg/s`,
     textX,
     textY,
   );

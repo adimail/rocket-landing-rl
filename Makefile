@@ -1,4 +1,4 @@
-run:
+run: clean
 	python3 run.py
 
 DIRS_TO_CLEAN := $(CURDIR)/logs $(CURDIR)/output

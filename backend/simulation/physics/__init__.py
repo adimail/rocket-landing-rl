@@ -14,24 +14,48 @@ class PhysicsEngine:
         return np.array([0.0, mass * self.gravity])
 
     def calculate_thrust_force_vector(
-        self, throttle: float, angle: float, gimbal: float
+        self, throttle: float, angle_degrees: float, gimbal_degrees: float
     ) -> np.ndarray:
-        """Calculates the thrust force vector."""
+        """Calculates the thrust force vector. Accepts angles in degrees, uses radians internally."""
         if throttle > 0:
-            thrust_direction = angle + gimbal
-            fx = throttle * self.thrust_power * np.sin(thrust_direction)
-            fy = throttle * self.thrust_power * np.cos(thrust_direction)
+            angle_radians = np.deg2rad(angle_degrees)
+            gimbal_radians = np.deg2rad(gimbal_degrees)
+            thrust_direction_radians = angle_radians + gimbal_radians
+            fx = throttle * self.thrust_power * np.sin(thrust_direction_radians)
+            fy = throttle * self.thrust_power * np.cos(thrust_direction_radians)
             return np.array([fx, fy])
         else:
             return np.array([0.0, 0.0])
 
-    def calculate_net_force(
-        self, mass: float, throttle: float, angle: float, gimbal: float
+    def calculate_drag_force(
+        self, state: dict, air_density=1.225, drag_coefficient=0.8, reference_area=10.0
     ) -> np.ndarray:
-        """Calculates the net force vector acting on the rocket."""
+        """Calculates aerodynamic drag force vector."""
+        velocity_vector = np.array([state["vx"], state["vy"]])
+        speed_squared = np.dot(velocity_vector, velocity_vector)  # v^2
+        if speed_squared > 0:
+            velocity_magnitude = np.sqrt(speed_squared)
+            drag_magnitude = (
+                0.5 * air_density * drag_coefficient * reference_area * speed_squared
+            )
+            drag_direction = -velocity_vector / velocity_magnitude
+            return drag_magnitude * drag_direction
+        else:
+            return np.array([0.0, 0.0])
+
+    def calculate_net_force(
+        self,
+        mass: float,
+        throttle: float,
+        angle: float,
+        gimbal: float,
+        state: dict,
+    ) -> np.ndarray:
+        """Calculates the net force vector acting on the rocket, including drag."""
         gravity = self.calculate_gravity_force(mass)
         thrust = self.calculate_thrust_force_vector(throttle, angle, gimbal)
-        return gravity + thrust
+        drag = self.calculate_drag_force(state)
+        return gravity + thrust + drag
 
     def calculate_acceleration(self, net_force: np.ndarray, mass: float) -> np.ndarray:
         """Calculates the acceleration vector based on net force and mass."""
@@ -47,9 +71,9 @@ class PhysicsEngine:
         state["x"] += state["vx"] * dt
         state["y"] += state["vy"] * dt
 
-    def calculate_angular_acceleration(self, gimbal: float) -> float:
+    def calculate_angular_acceleration(self, gimbal: float, throttle: float) -> float:
         """Calculates a simplified angular acceleration based on gimbal."""
-        return gimbal * 2.0
+        return gimbal * throttle * 2.0
 
     def update_angular_motion(self, state: dict, dt: float) -> None:
         """Updates angle and angular velocity using Euler method."""
@@ -59,9 +83,3 @@ class PhysicsEngine:
     def calculate_fuel_consumption(self, throttle: float, dt: float) -> float:
         """Calculates the amount of fuel consumed over a time step."""
         return throttle * self.fuel_consumption_rate * dt
-
-    # TODO:
-    # - Aerodynamic drag
-    # - Rotational dynamics (torque, moment of inertia)
-    # - Collision detection
-    # - Ground interaction forces

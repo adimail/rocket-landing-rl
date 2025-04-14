@@ -8,22 +8,29 @@ class Rocket:
         try:
             self.config = config
             self.physics_engine = PhysicsEngine(self.config)
-            self.gimbal_limit = self.config.get("env.gimbal_limit_deg") or 15
+            self.gimbal_limit_deg = self.config.get("env.gimbal_limit_deg") or 15
             self.state = get_initial_state()
         except Exception as err:
             print("Error initializing Rocket:", err)
             raise
 
-    def apply_action(self, throttle: float, gimbal: float, dt: float):
+    def apply_action(self, throttle: float, gimbal_deg: float, dt: float):
         try:
             throttle = np.clip(throttle, 0.0, 1.0)
+            gimbal_deg = np.clip(
+                gimbal_deg, -self.gimbal_limit_deg, self.gimbal_limit_deg
+            )
 
             total_mass = self.state["mass"] + self.state["fuelMass"]
             if self.state["fuelMass"] <= 0:
                 throttle = 0.0
 
             net_force = self.physics_engine.calculate_net_force(
-                total_mass, throttle, self.state["angle"], gimbal
+                total_mass,
+                throttle,
+                self.state["angle"],
+                gimbal_deg,
+                self.state,
             )
             acceleration = self.physics_engine.calculate_acceleration(
                 net_force, total_mass
@@ -33,7 +40,7 @@ class Rocket:
             self.physics_engine.update_linear_motion(self.state, dt)
 
             angular_acceleration = self.physics_engine.calculate_angular_acceleration(
-                gimbal
+                gimbal_deg, throttle
             )
             self.state["angularAcceleration"] = angular_acceleration
             self.physics_engine.update_angular_motion(self.state, dt)
@@ -61,8 +68,7 @@ class Rocket:
             speed = np.sqrt(vx**2 + vy**2)
             state["speed"] = float(speed)
 
-            angle_degrees = np.degrees(state["angle"])
-            relative_angle_deg = abs(angle_degrees)
+            relative_angle_deg = abs(state["angle"])
             state["relativeAngle"] = float(relative_angle_deg)
 
             return state
