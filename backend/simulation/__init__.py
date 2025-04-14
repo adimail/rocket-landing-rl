@@ -1,6 +1,7 @@
 from backend.simulation.rocket.controls import RocketControls
 from backend.logger import Logger
 from datetime import datetime
+import asyncio
 from typing import Tuple
 
 
@@ -18,6 +19,9 @@ class SimulationController:
             self.dt = self.rocket.dt
             self.paused = True
             self.rocket.touchdown = False
+            self._running = False
+            self.state_callback = None
+            self.current_action = (0.0, 0.0)
 
             self._log("info", "SimulationController started")
         except Exception as e:
@@ -55,7 +59,8 @@ class SimulationController:
             state = self.rocket.reset()
             self.paused = True
             self.rocket.touchdown = False
-
+            self._running = False
+            self.current_action = (0.0, 0.0)
             if self.log_state:
                 self._log("debug", f"Initial State: {state}")
 
@@ -64,10 +69,27 @@ class SimulationController:
             self._log("exception", f"Simulation reset failed: {e}")
             raise
 
-    def start(self):
+    def start(self, state_callback):
         try:
+            if self._running and self.paused:
+                self.paused = False
+                self._log("info", "Simulation resumed.")
+                asyncio.create_task(self._simulation_loop())
+                return
+
+            if self._running:
+                self._log(
+                    "warning", "Simulation already running. Start command ignored."
+                )
+                return
+
             self.paused = False
+            self._running = True
+            self.state_callback = state_callback
+
             self._log("info", "Simulation started.")
+            asyncio.create_task(self._simulation_loop())
+
         except Exception as e:
             self._log("exception", f"Simulation start failed: {e}")
             raise
@@ -79,6 +101,37 @@ class SimulationController:
         except Exception as e:
             self._log("exception", f"Simulation pause failed: {e}")
             raise
+
+    def set_action(self, action: Tuple[float, float]):
+        """Set the current action from external source (e.g., WebSocket)."""
+        self.current_action = action
+
+    async def _simulation_loop(self):
+        step_counter = 0
+        steps_per_message = int(0.1 / self.dt)
+
+        while self._running and not self.paused and not self.rocket.touchdown:
+            try:
+                state, reward, done = self.step(self.current_action)
+                step_counter += 1
+
+                if step_counter >= steps_per_message:
+                    if self.state_callback:
+                        self.state_callback(state, reward, done)
+                    step_counter = 0
+
+                if done:
+                    self._running = False
+                    if self.state_callback:
+                        self.state_callback(state, reward, done)
+                    break
+
+                await asyncio.sleep(self.dt)
+
+            except Exception as e:
+                self._log("exception", f"Error in simulation loop: {e}")
+                self._running = False
+                break
 
     def step(self, action: Tuple[float, float]) -> Tuple[dict, float, bool]:
         try:

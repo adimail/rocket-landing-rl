@@ -66,4 +66,5 @@ def get_environment_config():
         "thrust_power": cfg.get("env.thrust_power") or 20.0,
         "cold_gas_thrust_power": cfg.get("env.cold_gas_thrust_power") or 15,
         "fuel_consumption_rate": cfg.get("env.fuel_consumption_rate") or 0.1,
+        "max_step": cfg.get("env.max_step") or 1000,
     }

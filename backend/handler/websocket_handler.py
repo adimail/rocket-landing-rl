@@ -1,8 +1,6 @@
 from tornado.ioloop import IOLoop
 import tornado.websocket
 import json
-import threading
-import time
 
 from backend.simulation import SimulationController
 
@@ -12,7 +10,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         self.logger = logger
         self.sim = SimulationController()
         self.client_connected = False
-        self.stream_thread = None
         self.io_loop = IOLoop.current()
 
     def open(self):
@@ -22,16 +19,14 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         try:
             state = self.sim.reset()
             self.send_json({"state": state, "initial": True})
+
         except Exception as e:
             self.logger.error(f"Failed to send initial state: {e}")
-
-        self.stream_thread = threading.Thread(target=self.stream_state)
-        self.stream_thread.daemon = True
-        self.stream_thread.start()
 
     def on_close(self):
         self.logger.info("WebSocket closed")
         self.client_connected = False
+        self.sim.pause()
 
     def on_message(self, message):
         try:
@@ -44,15 +39,9 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
             throttle = data.get("throttle", 0.0)
             cold_gas_control = data.get("coldGasControl", 0.0)
 
-            if not self.sim.paused and not self.sim.rocket.touchdown:
-                state, reward, done = self.sim.step((throttle, cold_gas_control))
-                self.send_json(
-                    {
-                        "state": state,
-                        "reward": reward,
-                        "done": done,
-                    }
-                )
+            if not self.sim.paused:
+                self.sim.set_action((throttle, cold_gas_control))
+
         except Exception as e:
             self.logger.error(f"WebSocket message handling failed: {e}")
 
@@ -61,7 +50,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
             if command == "pause":
                 self.sim.pause()
             elif command == "start":
-                self.sim.start()
+                self.sim.start(self.send_state_update)
             elif command == "restart":
                 state = self.sim.reset()
                 self.send_json({"state": state, "restart": True})
@@ -74,78 +63,43 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         except Exception as e:
             self.logger.error(f"Failed to send message: {e}")
 
-    def stream_state(self):
-        sent_sim_over = False
-        step_counter = 0
-        steps_per_message = int(0.1 / self.sim.dt)
-
-        while self.client_connected:
-            try:
-                if self.sim.paused:
-                    sent_sim_over = False
-                    time.sleep(self.sim.dt)
-                    continue
-
-                if self.sim.rocket.touchdown:
-                    if not sent_sim_over:
-                        state = self.sim.render()
-                        try:
-                            safeSpeedThreshold = self.sim.rocket.config.get(
-                                "env.safeSpeedThreshold"
-                            )
-                            safeAngleThreshold = self.sim.rocket.config.get(
-                                "env.safeAngleThreshold"
-                            )
-
-                            is_safe = (
-                                state["speed"] <= safeSpeedThreshold
-                                and state["relativeAngle"] <= safeAngleThreshold
-                            )
-
-                            landingMessage = "safe" if is_safe else "unsafe"
-
-                            self.io_loop.add_callback(
-                                self.send_json,
-                                {
-                                    "message": "Simulation over",
-                                    "landing": landingMessage,
-                                    "state": state,
-                                    "done": True,
-                                },
-                            )
-                            self.logger.info(
-                                f"Simulation over. Landing is {landingMessage}"
-                            )
-                        except Exception as e:
-                            self.logger.error(f"Error during safe landing check: {e}")
-                        sent_sim_over = True
-                    time.sleep(self.sim.dt)
-                    continue
-
-                state, reward, done = self.sim.step((0.0, 0.0))
-                step_counter += 1
-
-                if step_counter >= steps_per_message:
-                    self.io_loop.add_callback(
-                        self.send_json,
-                        {
-                            "state": state,
-                            "reward": reward,
-                            "done": done,
-                        },
-                    )
-                    step_counter = 0
-
-                time.sleep(self.sim.dt)
-
-            except Exception as e:
-                self.logger.error(f"Error during streaming: {e}")
-                break
-
-    def reset_simulation(self):
+    def send_state_update(self, state, reward, done):
         try:
-            self.logger.info("Resetting simulation after ground touch...")
-            state = self.sim.reset()
-            self.send_json({"state": state, "initial": True})
+            if done and not hasattr(self, "simulation_over_sent"):
+                safeSpeedThreshold = self.sim.rocket.config.get(
+                    "env.safeSpeedThreshold"
+                )
+                safeAngleThreshold = self.sim.rocket.config.get(
+                    "env.safeAngleThreshold"
+                )
+
+                is_safe = (
+                    state["speed"] <= safeSpeedThreshold
+                    and state["relativeAngle"] <= safeAngleThreshold
+                )
+                landingMessage = "safe" if is_safe else "unsafe"
+
+                self.io_loop.add_callback(
+                    self.send_json,
+                    {
+                        "message": "Simulation over",
+                        "landing": landingMessage,
+                        "state": state,
+                        "done": True,
+                    },
+                )
+                self.logger.info(f"Simulation over. Landing is {landingMessage}")
+                setattr(self, "simulation_over_sent", True)
+
+            else:
+                self.io_loop.add_callback(
+                    self.send_json,
+                    {
+                        "state": state,
+                        "reward": reward,
+                        "done": done,
+                    },
+                )
+
         except Exception as e:
-            self.logger.error(f"Failed to reset simulation: {e}")
+            self.logger.error(f"Failed to send state update: {e}")

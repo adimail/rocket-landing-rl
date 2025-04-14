@@ -6,9 +6,11 @@ class RocketControls:
     def __init__(self):
         try:
             self.config = Config()
-            self.dt = self.config.get("env.time_step") or 0.05
+            self.dt = self.config.get("env.time_step") or 0.2
             self.rocket = Rocket(self.config)
             self.touchdown = False
+            self.steps = 0
+            self.max_steps = self.config.get("env.max_steps") or 1000
         except Exception as err:
             print("Error initializing RocketControls:", err)
             raise
@@ -17,21 +19,34 @@ class RocketControls:
         """
         action: Dictionary or tuple containing:
           - throttle (number [0.0, 1.0])
-          - cold_gas_thrust
+          - cold_gas_thrust (-1.0 to 1.0)
         """
         try:
             if self.touchdown:
                 raise Exception("Simulation is over. Reset to start again.")
 
+            # Increment step counter
+            self.steps += 1
+
+            # Check if we've reached max steps
+            if self.steps >= self.max_steps:
+                self.touchdown = True
+                return self.rocket.get_state(), -100.0, True
+
+            # Process action
             if isinstance(action, dict):
                 throttle = action.get("throttle", 0.0)
                 cold_gas_control = action.get("coldGasControl", 0.0)
             else:
                 throttle, cold_gas_control = action
 
+            # Apply action to rocket physics
             self.rocket.apply_action(throttle, cold_gas_control, self.dt)
 
+            # Get updated state
             state = self.rocket.get_state()
+
+            # Calculate reward and check for touchdown
             reward, self.touchdown = self.compute_reward(state)
 
             return state, reward, self.touchdown
@@ -50,11 +65,31 @@ class RocketControls:
             angle_deg = state["angle"]
 
             if y <= 0.0:
-                soft_landing = abs(vx) < 1.0 and abs(vy) < 2.0 and abs(angle_deg) < 5.0
-                reward = 100.0 if soft_landing else -100.0
+                perfect_landing = (
+                    abs(vx) < 0.5 and abs(vy) < 1.0 and abs(angle_deg) < 2.0
+                )
+                good_landing = abs(vx) < 1.0 and abs(vy) < 2.0 and abs(angle_deg) < 5.0
+                ok_landing = abs(vx) < 2.0 and abs(vy) < 3.0 and abs(angle_deg) < 10.0
+
+                # Award appropriate reward
+                if perfect_landing:
+                    reward = 200.0
+                elif good_landing:
+                    reward = 100.0
+                elif ok_landing:
+                    reward = 50.0
+                else:
+                    impact_penalty = -(abs(vx) + abs(vy) * 2 + abs(angle_deg) / 2)
+                    reward = max(-200.0, impact_penalty)
+
                 return reward, True
 
-            reward = -abs(vx) - abs(vy) - abs(angle_deg)
+            altitude_factor = 1.0 / (1.0 + abs(y) / 100.0)
+            velocity_penalty = -0.1 * (abs(vx) + abs(vy))
+            angle_penalty = -0.05 * abs(angle_deg)
+
+            reward = altitude_factor + velocity_penalty + angle_penalty
+
             return reward, False
         except Exception as err:
             print("Error in compute_reward:", err)
@@ -64,6 +99,7 @@ class RocketControls:
         try:
             self.rocket.reset()
             self.touchdown = False
+            self.steps = 0
             return self.rocket.get_state()
         except Exception as err:
             print("Error resetting RocketControls:", err)

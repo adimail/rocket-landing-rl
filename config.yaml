@@ -6,17 +6,18 @@ env:
   thrust_power: 20.0 # Newtons
   cold_gas_thrust_power: 0.5 # Torque
   fuel_consumption_rate: 0.1 # kg/second
-  time_step: 0.2 # seconds
+  time_step: 0.1 # seconds
+  max_steps: 1000
   safeSpeedThreshold: 10 # m/s
   safeAngleThreshold: 5 # degrees
 
 rocket:
-  position_limits:
-    x: [-200.0, 200.0] # meters
-    y: [2000.0, 2300.0] # meters
-  velocity_limits:
-    vx: [-30.0, -10.0] # m/s
-    vy: [-250.0, -230.0] # m/s
+  position_limits: # meters
+    x: [-200.0, 200.0]
+    y: [2000.0, 2300.0]
+  velocity_limits: # m/s
+    vx: [-30.0, -10.0]
+    vy: [-250.0, -230.0]
   acceleration_limits: # m/s²
     ax: [-5, 5]
     ay: [-5, 5]

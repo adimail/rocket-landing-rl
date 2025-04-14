@@ -8,7 +8,10 @@ class PhysicsEngine:
         self.thrust_power = config.get("env.thrust_power") or 20.0
         self.cold_gas_thrust_power = config.get("env.cold_gas_thrust_power") or 0.5
         self.fuel_consumption_rate = config.get("env.fuel_consumption_rate") or 0.1
-        self.dt = config.get("env.time_step") or 0.05
+        self.dt = config.get("env.time_step") or 0.2
+
+        # Angular damping factor - prevents excessive rotation
+        self.angular_damping = 0.05
 
     def calculate_gravity_force(self, mass: float) -> np.ndarray:
         """Calculates the gravitational force vector."""
@@ -63,21 +66,50 @@ class PhysicsEngine:
         else:
             return np.array([0.0, 0.0])
 
-    def update_linear_motion(self, state: dict, dt: float) -> None:
-        """Updates linear position and velocity using Euler method."""
-        state["vx"] += state["ax"] * dt
-        state["vy"] += state["ay"] * dt
-        state["x"] += state["vx"] * dt
-        state["y"] += state["vy"] * dt
+    def update_state_verlet(
+        self, current_state: dict, previous_state: dict, dt: float
+    ) -> dict:
+        """
+        Updates state using Verlet integration. Returns new state.
 
-    def calculate_angular_acceleration(self, cold_gas: float, throttle: float) -> float:
-        return throttle * 2.0 + cold_gas * self.cold_gas_thrust_power
+        Verlet integration is a second-order method that uses positions and accelerations
+        from the current and previous states to update the position and velocity.
+        """
+        new_state = current_state.copy()
 
-    def update_angular_motion(self, state: dict, dt: float) -> None:
-        """Updates angle and angular velocity using Euler method."""
-        state["angularVelocity"] += state["angularAcceleration"] * dt
-        state["angle"] += state["angularVelocity"] * dt
-        state["angle"] = self.normalize_angle(state["angle"])
+        # Linear motion update using Verlet integration
+        # Position update: x(t+dt) = 2*x(t) - x(t-dt) + a(t)*dt²
+        new_state["x"] = (
+            2 * current_state["x"] - previous_state["x"] + current_state["ax"] * dt**2
+        )
+        new_state["y"] = (
+            2 * current_state["y"] - previous_state["y"] + current_state["ay"] * dt**2
+        )
+
+        # Velocity update: v(t+dt/2) = (x(t+dt) - x(t)) / dt
+        new_state["vx"] = (new_state["x"] - current_state["x"]) / dt
+        new_state["vy"] = (new_state["y"] - current_state["y"]) / dt
+
+        # Angular motion update with damping
+        # Apply small damping factor to prevent excessive rotation
+        damping_factor = 1.0 - (self.angular_damping * dt)
+
+        # Calculate new angle using modified Verlet for angular motion
+        new_state["angle"] = (
+            2 * current_state["angle"] * damping_factor
+            - previous_state["angle"] * damping_factor**2
+            + current_state["angularAcceleration"] * dt**2
+        )
+
+        # Calculate angular velocity with damping
+        new_state["angularVelocity"] = (
+            (new_state["angle"] - current_state["angle"]) / dt
+        ) * damping_factor
+
+        # Normalize angle
+        new_state["angle"] = self.normalize_angle(new_state["angle"])
+
+        return new_state
 
     def normalize_angle(self, angle):
         """Normalize angle to be within -360 to 360 degrees."""
@@ -90,3 +122,14 @@ class PhysicsEngine:
     def calculate_fuel_consumption(self, throttle: float, dt: float) -> float:
         """Calculates the amount of fuel consumed over a time step."""
         return throttle * self.fuel_consumption_rate * dt
+
+    def calculate_angular_acceleration(self, throttle: float, cold_gas: float) -> float:
+        """Calculates angular acceleration based on cold gas control input."""
+        # Scale the cold gas effect - throttle provides a modest boost to control authority
+        # but cold gas works even without main engine thrust
+        base_control = self.cold_gas_thrust_power * cold_gas
+        throttle_boost = (
+            0.3 * throttle * abs(cold_gas)
+        )  # Throttle gives a small boost to control
+
+        return base_control + throttle_boost
