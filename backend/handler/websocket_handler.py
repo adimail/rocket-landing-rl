@@ -1,4 +1,5 @@
 from tornado.ioloop import IOLoop
+from backend.config import Config
 import tornado.websocket
 import json
 
@@ -8,7 +9,9 @@ from backend.simulation import SimulationController
 class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
     def initialize(self, logger):
         self.logger = logger
-        self.sim = SimulationController()
+        self.config = Config()
+        num_rockets = self.config.get("env.num_rockets") or 1
+        self.sim = SimulationController(num_rockets=num_rockets)
         self.client_connected = False
         self.io_loop = IOLoop.current()
 
@@ -17,8 +20,8 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         self.client_connected = True
 
         try:
-            state = self.sim.reset()
-            self.send_json({"state": state, "initial": True})
+            states = self.sim.reset()
+            self.send_json({"state": states, "initial": True})
 
         except Exception as e:
             self.logger.error(f"Failed to send initial state: {e}")
@@ -45,7 +48,8 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
             cold_gas_control = data.get("coldGasControl", 0.0)
 
             if not self.sim.paused:
-                self.sim.set_action((throttle, cold_gas_control))
+                actions = [(throttle, cold_gas_control)] * self.sim.num_rockets
+                self.sim.set_action(actions)
 
         except Exception as e:
             self.logger.error(f"WebSocket message handling failed: {e}")
@@ -57,8 +61,8 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
             elif command == "start":
                 self.sim.start(self.send_state_update)
             elif command == "restart":
-                state = self.sim.reset()
-                self.send_json({"state": state, "restart": True})
+                states = self.sim.reset()
+                self.send_json({"state": states, "restart": True})
         except Exception as e:
             self.logger.error(f"Command handling failed: {e}")
 
@@ -68,40 +72,42 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         except Exception as e:
             self.logger.error(f"Failed to send message: {e}")
 
-    def send_state_update(self, state, reward, done):
+    def send_state_update(self, states, rewards, dones):
         try:
-            if done:
-                safeSpeedThreshold = self.sim.rocket.config.get(
+            all_done = all(dones)
+            if all_done:
+                safeSpeedThreshold = self.sim.rockets[0].rocket.config.get(
                     "env.safeSpeedThreshold"
                 )
-                safeAngleThreshold = self.sim.rocket.config.get(
+                safeAngleThreshold = self.sim.rockets[0].rocket.config.get(
                     "env.safeAngleThreshold"
                 )
 
-                is_safe = (
-                    state["speed"] <= safeSpeedThreshold
-                    and state["relativeAngle"] <= safeAngleThreshold
-                )
-                landingMessage = "safe" if is_safe else "unsafe"
+                landing_messages = []
+                for state in states:
+                    is_safe = (
+                        state["speed"] <= safeSpeedThreshold
+                        and state["relativeAngle"] <= safeAngleThreshold
+                    )
+                    landing_messages.append("safe" if is_safe else "unsafe")
 
                 self.io_loop.add_callback(
                     self.send_json,
                     {
-                        "message": "Simulation over",
-                        "landing": landingMessage,
-                        "state": state,
+                        "landing": landing_messages,
+                        "state": states,
                         "done": True,
                     },
                 )
-                self.logger.info(f"Simulation over. Landing is {landingMessage}")
+                self.logger.info(f"Simulation over. Landing are {landing_messages}")
 
             else:
                 self.io_loop.add_callback(
                     self.send_json,
                     {
-                        "state": state,
-                        "reward": reward,
-                        "done": done,
+                        "state": states,
+                        "reward": rewards,
+                        "done": dones,
                     },
                 )
 

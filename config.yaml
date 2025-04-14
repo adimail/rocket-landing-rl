@@ -2,6 +2,7 @@ app:
   PORT: 8080
 
 env:
+  num_rockets: 3 # Number of rockets to simulate
   gravity: -9.81  # m/s²
   thrust_power: 20.0 # Newtons
   cold_gas_thrust_power: 0.5 # Torque
@@ -10,7 +11,7 @@ env:
   max_steps: 1000
   safeSpeedThreshold: 10 # m/s
   safeAngleThreshold: 5 # degrees
-  speed: 8
+  speed: 1
 
 rocket:
   position_limits: # meters

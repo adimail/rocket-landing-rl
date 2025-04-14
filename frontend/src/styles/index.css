@@ -45,3 +45,11 @@ footer {
   text-align: center;
   margin-top: 50px;
 }
+
+#rocketstatedetails {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  padding: 8px;
+  box-sizing: border-box;
+}

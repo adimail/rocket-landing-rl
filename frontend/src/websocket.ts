@@ -1,5 +1,5 @@
 import type { RocketState } from "./types";
-import { renderState } from "./utils/render";
+import { renderStates } from "@/render";
 
 export class RocketWebSocket {
   private socket: WebSocket;
@@ -8,9 +8,7 @@ export class RocketWebSocket {
 
   constructor(wsUrl: string) {
     this.url = wsUrl;
-
     this.socket = this.initializeSocket();
-
     this.attachUIHandlers();
   }
 
@@ -39,18 +37,23 @@ export class RocketWebSocket {
   private handleMessage(event: MessageEvent): void {
     try {
       const data = JSON.parse(event.data);
-
       if (data.landing) {
-        if (data.landing === "safe") {
-          console.log("[RocketWebSocket] Landing was safe!");
-        } else if (data.landing === "unsafe") {
-          console.log("[RocketWebSocket] Landing was unsafe!");
-        }
+        data.landing.forEach((landing: "safe" | "unsafe", index: number) => {
+          if (landing === "safe") {
+            console.log(
+              `[RocketWebSocket] Rocket ${index + 1} landing was safe!`,
+            );
+          } else if (landing === "unsafe") {
+            console.log(
+              `[RocketWebSocket] Rocket ${index + 1} landing was unsafe!`,
+            );
+          }
+        });
       }
 
       if (data.state) {
-        const state: RocketState = data.state;
-        renderState(state, data.landing);
+        const states: RocketState[] = data.state;
+        renderStates(states, data.landing);
       }
     } catch (err) {
       console.error("[RocketWebSocket] Failed to parse message:", err);
