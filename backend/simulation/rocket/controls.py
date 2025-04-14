@@ -27,10 +27,11 @@ class RocketControls:
             if isinstance(action, dict):
                 throttle = action.get("throttle", 0.0)
                 gimbal_deg = action.get("gimbalAngleX", 0.0)
+                cold_gas_control = action.get("coldGasControl", 0.0)
             else:
-                throttle, gimbal_deg = action
+                throttle, gimbal_deg, cold_gas_control = action
 
-            self.rocket.apply_action(throttle, gimbal_deg, self.dt)
+            self.rocket.apply_action(throttle, gimbal_deg, cold_gas_control, self.dt)
 
             state = self.rocket.get_state()
             reward, self.touchdown = self.compute_reward(state)

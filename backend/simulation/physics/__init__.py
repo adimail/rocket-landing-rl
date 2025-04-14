@@ -6,6 +6,7 @@ class PhysicsEngine:
     def __init__(self, config: Config):
         self.gravity = config.get("env.gravity") or -9.81
         self.thrust_power = config.get("env.thrust_power") or 20.0
+        self.cold_gas_thrust_power = config.get("env.cold_gas_thrust_power") or 0.5
         self.fuel_consumption_rate = config.get("env.fuel_consumption_rate") or 0.1
         self.dt = config.get("env.time_step") or 0.05
 
@@ -71,9 +72,11 @@ class PhysicsEngine:
         state["x"] += state["vx"] * dt
         state["y"] += state["vy"] * dt
 
-    def calculate_angular_acceleration(self, gimbal: float, throttle: float) -> float:
+    def calculate_angular_acceleration(
+        self, gimbal: float, cold_gas: float, throttle: float
+    ) -> float:
         """Calculates a simplified angular acceleration based on gimbal."""
-        return gimbal * throttle * 2.0
+        return gimbal * throttle * 2.0 + cold_gas * self.cold_gas_thrust_power
 
     def update_angular_motion(self, state: dict, dt: float) -> None:
         """Updates angle and angular velocity using Euler method."""

@@ -4,6 +4,7 @@ app:
 env:
   gravity: -9.81  # m/s²
   thrust_power: 20.0 # Newtons
+  cold_gas_thrust_power: 0.5 # Torque
   gimbal_limit_deg: 15 # degrees
   fuel_consumption_rate: 0.1 # kg/second
   time_step: 0.2 # seconds
@@ -16,7 +17,7 @@ rocket:
     y: [2000.0, 2300.0] # meters
   velocity_limits:
     vx: [-30.0, -10.0] # m/s
-    vy: [-150.0, -130.0] # m/s
+    vy: [-250.0, -230.0] # m/s
   acceleration_limits: # m/s²
     ax: [-5, 5]
     ay: [-5, 5]

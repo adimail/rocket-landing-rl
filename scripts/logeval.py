@@ -49,7 +49,7 @@ class SimulationLogEval:
 
     def _extract_log_data(self, log_path: str) -> Optional[pd.DataFrame]:
         try:
-            timestamps, states, rewards = [], [], []
+            timestamps, states, rewards, actions = [], [], [], []
             with open(log_path, "r") as file:
                 for line in file:
                     timestamp, data = self._parse_step_log_line(line)
@@ -57,10 +57,14 @@ class SimulationLogEval:
                         timestamps.append(timestamp)
                         states.append(data["state"])
                         rewards.append(data["reward"])
+                        actions.append(data.get("action", {}))
             if not timestamps:
                 print(f"[WARNING] No valid data parsed from {log_path}")
                 return None
-            df = pd.DataFrame(states)
+
+            df_states = pd.DataFrame(states)
+            df_actions = pd.DataFrame(actions).add_prefix("action_")
+            df = pd.concat([df_states, df_actions], axis=1)
             df["timestamp"] = timestamps
             df["reward"] = rewards
             df.set_index("timestamp", inplace=True)
@@ -129,7 +133,7 @@ class SimulationLogEval:
         csv_filename = os.path.splitext(log_file)[0] + ".csv"
         csv_path = os.path.join(self.csv_dir, csv_filename)
         try:
-            df.to_csv(csv_path)
+            df.round(2).to_csv(csv_path)
             print(f"[SUCCESS] CSV saved to {csv_path}")
         except Exception as e:
             print(f"[ERROR] Failed to save CSV for {log_file}: {e}")

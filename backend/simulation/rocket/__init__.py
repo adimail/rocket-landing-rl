@@ -14,7 +14,9 @@ class Rocket:
             print("Error initializing Rocket:", err)
             raise
 
-    def apply_action(self, throttle: float, gimbal_deg: float, dt: float):
+    def apply_action(
+        self, throttle: float, cold_gas_control: float, gimbal_deg: float, dt: float
+    ):
         try:
             throttle = np.clip(throttle, 0.0, 1.0)
             gimbal_deg = np.clip(
@@ -40,7 +42,7 @@ class Rocket:
             self.physics_engine.update_linear_motion(self.state, dt)
 
             angular_acceleration = self.physics_engine.calculate_angular_acceleration(
-                gimbal_deg, throttle
+                gimbal_deg, throttle, cold_gas_control
             )
             self.state["angularAcceleration"] = angular_acceleration
             self.physics_engine.update_angular_motion(self.state, dt)

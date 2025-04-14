@@ -17,5 +17,5 @@ export type RocketState = {
 export type RocketControl = {
   throttle: number; // [0.0 – 1.0]
   gimbalAngleX: number; // degrees
-  gimbalAngleY: number; // degrees (not used right now for 2D sim)
+  cold_gas_thrust: number; // [-1.0 - 1.0]
 };
