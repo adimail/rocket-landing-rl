@@ -24,6 +24,9 @@ dev:
 eval:
 	python3 scripts/logeval.py
 
+test:
+	. venv/bin/activate && pytest
+
 install:
 	@echo "Setting up Python virtual environment..."
 	./setup.sh
