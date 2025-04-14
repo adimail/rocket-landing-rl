@@ -12,14 +12,14 @@ env:
 
 rocket:
   position_limits:
-    x: [-50.0, 50.0]
-    y: [200.0, 230.0]
+    x: [-200.0, 200.0]
+    y: [2000.0, 2300.0]
   velocity_limits:
-    vx: [-3.0, -1.0]
-    vy: [-13.0, -7.0]
+    vx: [-30.0, -10.0]
+    vy: [-130.0, -70.0]
   acceleration_limits:
-    ax: [-0.5, 0.5]
-    ay: [-0.5, 0.5]
+    ax: [-5, 5]
+    ay: [-5, 5]
   attitude_limits:
     angle: [-0.5, 0.5]
     angularVelocity: [-0.16, 0.16]
