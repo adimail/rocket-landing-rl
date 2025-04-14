@@ -79,6 +79,15 @@ class PhysicsEngine:
         """Updates angle and angular velocity using Euler method."""
         state["angularVelocity"] += state["angularAcceleration"] * dt
         state["angle"] += state["angularVelocity"] * dt
+        state["angle"] = self.normalize_angle(state["angle"])
+
+    def normalize_angle(self, angle):
+        """Normalize angle to be within -360 to 360 degrees."""
+        while angle > 360:
+            angle -= 360
+        while angle < -360:
+            angle += 360
+        return angle
 
     def calculate_fuel_consumption(self, throttle: float, dt: float) -> float:
         """Calculates the amount of fuel consumed over a time step."""
