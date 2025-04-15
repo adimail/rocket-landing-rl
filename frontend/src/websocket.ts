@@ -124,10 +124,10 @@ export class RocketWebSocket {
       }
 
       const throttle = Math.max(0, Math.min(1, action.throttle));
-      const coldGasControl = Math.max(-1, Math.min(1, action.coldGasControl));
+      const coldGas = Math.max(-1, Math.min(1, action.coldGas));
 
       const payload = {
-        action: { throttle, coldGasControl },
+        action: { throttle, coldGas },
         rocket_index: rocketIndex,
         user: true,
       };

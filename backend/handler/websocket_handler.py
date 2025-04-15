@@ -67,7 +67,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 try:
                     action_dict: Dict[str, float] = {
                         "throttle": float(action_data.get("throttle", 0.0)),
-                        "coldGasControl": float(action_data.get("coldGasControl", 0.0)),
+                        "coldGas": float(action_data.get("coldGas", 0.0)),
                     }
                     self.sim.set_action(action_dict, rocket_index)
                 except (ValueError, TypeError, KeyError) as inner_e:
@@ -120,12 +120,14 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
     ):
         """Callback function invoked by SimulationController after a step."""
         try:
+            action_taken = self.sim.prev_action_taken.copy()
+
             payload: Dict[str, Any] = {
                 "step": {
                     "state": states,
                     "reward": rewards,
                     "done": dones,
-                    "action_taken": self.sim.current_actions,
+                    "action_taken": action_taken,
                 },
             }
 

@@ -36,7 +36,7 @@ class RocketControls:
             # Process action
             if isinstance(action, dict):
                 throttle = action.get("throttle", 0.0)
-                cold_gas_control = action.get("coldGasControl", 0.0)
+                cold_gas_control = action.get("coldGas", 0.0)
             else:
                 throttle, cold_gas_control = action
 

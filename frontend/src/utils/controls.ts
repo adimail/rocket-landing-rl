@@ -82,7 +82,7 @@ export class RocketControls {
     try {
       const action: RocketAction = {
         throttle,
-        coldGasControl: coldGas,
+        coldGas,
       };
       this.socket.sendAction(action, this.rocketIndex);
     } catch (err) {

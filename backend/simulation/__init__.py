@@ -51,8 +51,10 @@ class SimulationController:
             # --- Action Representation Change ---
             # Store actions as dictionaries consistently
             self.current_actions: List[Dict[str, float]] = [
-                {"throttle": 0.0, "coldGasControl": 0.0}
-                for _ in range(self.num_rockets)
+                {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
+            ]
+            self.prev_action_taken: List[Dict[str, float]] = [
+                {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
             # -----------------------------------
 
@@ -120,8 +122,7 @@ class SimulationController:
             # --- Action Representation Change ---
             # Reset actions to default dictionaries
             self.current_actions = [
-                {"throttle": 0.0, "coldGasControl": 0.0}
-                for _ in range(self.num_rockets)
+                {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
             # -----------------------------------
             if self.log_state:
@@ -196,11 +197,11 @@ class SimulationController:
             return
 
         throttle = action.get("throttle", 0.0)
-        cold_gas = action.get("coldGasControl", 0.0)
+        cold_gas = action.get("coldGas", 0.0)
 
         clipped_action = {
             "throttle": max(0.0, min(1.0, float(throttle))),
-            "coldGasControl": max(-1.0, min(1.0, float(cold_gas))),
+            "coldGas": max(-1.0, min(1.0, float(cold_gas))),
         }
 
         self.current_actions[rocket_index] = clipped_action
@@ -308,9 +309,9 @@ class SimulationController:
                     all_rewards.append(0.0)
                     all_dones.append(True)
 
+            self.prev_action_taken = self.current_actions
             self.current_actions = [
-                {"throttle": 0.0, "coldGasControl": 0.0}
-                for _ in range(self.num_rockets)
+                {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
 
             return all_states, all_rewards, all_dones

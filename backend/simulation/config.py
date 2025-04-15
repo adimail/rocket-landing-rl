@@ -68,5 +68,16 @@ def get_environment_config():
         "thrust_power": cfg.get("env.thrust_power") or 20.0,
         "cold_gas_thrust_power": cfg.get("env.cold_gas_thrust_power") or 15,
         "fuel_consumption_rate": cfg.get("env.fuel_consumption_rate") or 0.1,
-        "max_step": cfg.get("env.max_step") or 1000,
+        "max_step": cfg.get("env.max_steps") or 1000,
+    }
+
+
+def get_physics_config():
+    return {
+        "air_density": cfg.get("physics.air_density") or 1.225,  # kg/m³
+        "drag_coefficient": cfg.get("physics.drag_coefficient") or 0.8,
+        "reference_area": cfg.get("physics.reference_area") or 10.8,  # m²
+        "rocket_radius": cfg.get("physics.rocket_radius") or 1.85,  # m
+        "cold_gas_moment_arm": cfg.get("physics.cold_gas_moment_arm") or 1.85,  # m
+        "angular_damping": cfg.get("physics.angular_damping") or 0.05,
     }
