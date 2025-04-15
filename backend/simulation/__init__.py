@@ -48,15 +48,12 @@ class SimulationController:
                 Callable[[List[Dict], List[float], List[bool]], None]
             ] = None
 
-            # --- Action Representation Change ---
-            # Store actions as dictionaries consistently
             self.current_actions: List[Dict[str, float]] = [
                 {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
             self.prev_action_taken: List[Dict[str, float]] = [
                 {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
-            # -----------------------------------
 
             self.sim_speed = min(self.config.get("env.speed"), 10)
 
@@ -65,7 +62,6 @@ class SimulationController:
                 f"SimulationController initialized with {self.num_rockets} rockets",
             )
         except Exception as e:
-            # Use configured logger if available, else print
             self._log("exception", f"Failed to initialize SimulationController: {e}")
             raise
 
@@ -74,17 +70,12 @@ class SimulationController:
         if self.logger and hasattr(self.logger, level):
             getattr(self.logger, level)(msg)
         elif level == "exception":
-            print(
-                f"EXCEPTION: {msg}"
-            )  # Fallback print for critical errors if logger fails
-        # else:
-        #     print(f"{level.upper()}: {msg}") # Optional fallback for other levels
+            print(f"EXCEPTION: {msg}")
 
     def _setup_new_logger(self):
         try:
-            # Ensure previous handlers are closed before reconfiguring
             if self.logger:
-                for handler in self.logger.handlers[:]:  # Iterate over a copy
+                for handler in self.logger.handlers[:]:
                     handler.close()
                     self.logger.removeHandler(handler)
 
@@ -92,26 +83,20 @@ class SimulationController:
             log_dir = "logs/simulations"
             log_filename = f"{timestamp}.log"
 
-            # Assuming Logger class correctly sets up and returns a logger instance
             self.logger = Logger(
                 file_name=log_filename,
                 log_dir=log_dir,
-                stream_handler=False,  # Typically false for simulation logs
+                stream_handler=False,
             ).get_logger()
             self._log("info", f"Logger initialized: {log_filename}")
         except Exception as e:
-            print(
-                f"Logger setup failed: {e}"
-            )  # Print as logger might not be functional
-            self.logger = None  # Ensure logger is None if setup fails
-            # Decide if this is critical enough to raise the exception
-            # raise
+            print(f"Logger setup failed: {e}")
+            self.logger = None
 
     def reset(self) -> List[Dict]:
         """Resets the simulation state for all rockets."""
         try:
             self._log("info", "Resetting simulation...")
-            # Reset logger for the new simulation run
             self._setup_new_logger()
 
             states = [rocket.reset() for rocket in self.rockets]
@@ -119,14 +104,11 @@ class SimulationController:
             self.rocket_touchdown_status = [False] * self.num_rockets
             self.rocket_steps = [0] * self.num_rockets
             self._running = False
-            # --- Action Representation Change ---
-            # Reset actions to default dictionaries
             self.current_actions = [
                 {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
             # -----------------------------------
             if self.log_state:
-                # Log initial states concisely if many rockets
                 log_states = (
                     str(states)
                     if self.num_rockets < 5
@@ -147,10 +129,7 @@ class SimulationController:
             if self._running and self.paused:
                 self.paused = False
                 self._log("info", "Simulation resumed.")
-                # Ensure loop restarts if it wasn't already running (e.g., paused immediately after start)
-                if (
-                    not asyncio.current_task()
-                ):  # Check if a loop task is already running
+                if not asyncio.current_task():
                     asyncio.create_task(self._simulation_loop())
                 return
 
@@ -162,10 +141,9 @@ class SimulationController:
 
             self.paused = False
             self._running = True
-            self.state_callback = state_callback  # Store the callback
+            self.state_callback = state_callback
 
             self._log("info", "Simulation started.")
-            # Start the simulation loop as an async task
             asyncio.create_task(self._simulation_loop())
 
         except Exception as e:
@@ -184,7 +162,6 @@ class SimulationController:
             self._log("exception", f"Simulation pause failed: {e}")
             raise
 
-    # --- Action Representation Change ---
     def set_action(self, action: Dict[str, float], rocket_index: int):
         """Sets the intended action for a specific rocket for the next step.
         Action is now expected as a dictionary.
@@ -211,8 +188,6 @@ class SimulationController:
                 "debug",
                 f"Action set for rocket {rocket_index}: {clipped_action}",
             )
-
-    # -----------------------------------
 
     async def _simulation_loop(self):
         """The main asynchronous simulation loop."""
@@ -279,11 +254,8 @@ class SimulationController:
 
             for i in range(self.num_rockets):
                 if not self.rocket_touchdown_status[i]:
-                    # --- Action Representation Change ---
-                    # Pass the action dictionary directly to the rocket's step method
                     current_action = actions[i]
                     state, reward, sim_done = self.rockets[i].step(current_action)
-                    # -----------------------------------
 
                     self.rocket_touchdown_status[i] = sim_done
                     self.rocket_steps[i] += 1

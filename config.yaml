@@ -2,10 +2,10 @@ app:
   PORT: 8080
 
 env:
-  num_rockets: 2
+  num_rockets: 5
   gravity: -9.81 # m/s²
-  thrust_power: 13000000 # N
-  cold_gas_thrust_power: 50000 # N
+  thrust_power: 15000000 # N
+  cold_gas_thrust_power: 70000 # N
   fuel_consumption_rate: 1700 # kg / (s * throttle)
   time_step: 0.1 # s
   max_steps: 1000

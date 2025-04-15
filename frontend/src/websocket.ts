@@ -1,4 +1,4 @@
-import type { RocketState, RocketAction } from "./types";
+import type { RocketState, RocketAction } from "@/types";
 import { renderStates } from "@/render";
 
 export class RocketWebSocket {
@@ -38,17 +38,28 @@ export class RocketWebSocket {
     try {
       const data = JSON.parse(event.data);
 
+      let actions: RocketAction[] | undefined = undefined;
+
       if (data.step) {
         const states: RocketState[] = data.step.state;
+        if (data.step.action_taken && Array.isArray(data.step.action_taken)) {
+          actions = data.step.action_taken as RocketAction[];
+        }
         const landingMessages: ("safe" | "unsafe")[] | undefined = data.landing;
-        renderStates(states, landingMessages);
+        renderStates(states, actions, landingMessages);
       } else if (data.state) {
         const states: RocketState[] = data.state;
-        renderStates(states, data.landing);
+        if (data.action && Array.isArray(data.action)) {
+          actions = data.action as RocketAction[];
+        }
+        renderStates(states, actions, data.landing);
       }
 
       if (data.initial) {
         console.log("[RocketWebSocket] Received initial state.");
+        if (!actions && data.state) {
+          renderStates(data.state, undefined, data.landing);
+        }
       }
       if (data.restart) {
         console.log("[RocketWebSocket] Simulation restarted.");

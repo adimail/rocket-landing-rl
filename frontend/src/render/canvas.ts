@@ -1,4 +1,4 @@
-import type { RocketState } from "../types";
+import type { RocketState, RocketAction } from "@/types";
 import * as Constants from "@/utils/constants";
 import { backgroundImg, rocketImage, explosionImage } from "@/utils/constants";
 
@@ -56,6 +56,7 @@ export function renderRocket(
   canvasWidth: number,
   canvasHeight: number,
   state: RocketState,
+  action: RocketAction,
 ): void {
   const rocketCenterX = Constants.ROCKET_WIDTH / 2;
   const rocketCenterY = Constants.ROCKET_HEIGHT / 2;
@@ -75,6 +76,58 @@ export function renderRocket(
     Constants.ROCKET_WIDTH,
     Constants.ROCKET_HEIGHT,
   );
+
+  if (state.y > 0) {
+    if (action.throttle > 0) {
+      const flameLength = Constants.MAX_FLAME_LENGTH * action.throttle;
+      const flameBaseY = rocketCenterY;
+      const flameTipY = flameBaseY + flameLength;
+      const flameWidth = Constants.FLAME_WIDTH * (0.5 + action.throttle * 0.5);
+
+      const gradient = ctx.createLinearGradient(0, flameBaseY, 0, flameTipY);
+      gradient.addColorStop(0, Constants.FLAME_COLOR_INNER);
+      gradient.addColorStop(1, Constants.FLAME_COLOR_OUTER);
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.moveTo(-flameWidth / 2, flameBaseY);
+      ctx.lineTo(flameWidth / 2, flameBaseY);
+      ctx.lineTo(0, flameTipY);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    const thrusterBaseY = -rocketCenterY + Constants.THRUSTER_OFFSET_Y;
+
+    if (action.coldGas > 0) {
+      const thrusterTipX =
+        -Constants.THRUSTER_OFFSET_X - Constants.THRUSTER_LENGTH;
+      ctx.fillStyle = Constants.THRUSTER_COLOR;
+      ctx.beginPath();
+      ctx.rect(
+        thrusterTipX,
+        thrusterBaseY - Constants.THRUSTER_WIDTH / 2,
+        Constants.THRUSTER_LENGTH,
+        Constants.THRUSTER_WIDTH,
+      );
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    if (action.coldGas < 0) {
+      ctx.fillStyle = Constants.THRUSTER_COLOR;
+      ctx.beginPath();
+      ctx.rect(
+        Constants.THRUSTER_OFFSET_X,
+        thrusterBaseY - Constants.THRUSTER_WIDTH / 2,
+        Constants.THRUSTER_LENGTH,
+        Constants.THRUSTER_WIDTH,
+      );
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
   ctx.restore();
 }
 
@@ -91,7 +144,7 @@ export function renderExplosion(
     const scaledWidth = frameWidth * explosionScale;
     const scaledHeight = frameHeight * explosionScale;
     const explosionX = landingX - scaledWidth / 2;
-    const explosionY = landingY - scaledHeight / 2 - 20;
+    const explosionY = landingY - scaledHeight * 0.8;
     ctx.drawImage(
       explosionImage,
       explosionFrame * frameWidth,

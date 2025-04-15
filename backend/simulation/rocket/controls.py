@@ -25,28 +25,22 @@ class RocketControls:
             if self.touchdown:
                 raise Exception("Simulation is over. Reset to start again.")
 
-            # Increment step counter
             self.steps += 1
 
-            # Check if we've reached max steps
             if self.steps >= self.max_steps:
                 self.touchdown = True
                 return self.rocket.get_state(), -100.0, True
 
-            # Process action
             if isinstance(action, dict):
                 throttle = action.get("throttle", 0.0)
                 cold_gas_control = action.get("coldGas", 0.0)
             else:
                 throttle, cold_gas_control = action
 
-            # Apply action to rocket physics
             self.rocket.apply_action(throttle, cold_gas_control, self.dt)
 
-            # Get updated state
             state = self.rocket.get_state()
 
-            # Calculate reward and check for touchdown
             reward, self.touchdown = self.compute_reward(state)
 
             return state, reward, self.touchdown
@@ -71,7 +65,6 @@ class RocketControls:
                 good_landing = abs(vx) < 1.0 and abs(vy) < 2.0 and abs(angle_deg) < 5.0
                 ok_landing = abs(vx) < 2.0 and abs(vy) < 3.0 and abs(angle_deg) < 10.0
 
-                # Award appropriate reward
                 if perfect_landing:
                     reward = 200.0
                 elif good_landing:

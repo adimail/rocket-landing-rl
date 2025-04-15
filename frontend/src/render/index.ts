@@ -1,4 +1,4 @@
-import type { RocketState } from "../types";
+import type { RocketState, RocketAction } from "../types"; // Import RocketAction
 import * as Constants from "@/utils/constants";
 import {
   renderBackground,
@@ -9,10 +9,13 @@ import {
 import { renderStateText } from "./rocketdetails";
 
 let currentStates: RocketState[] | null = null;
+let currentActions: RocketAction[] | null = null;
 let explosionFrameCounters: number[] = [];
 let explosionStartTimes: number[] = [];
 let areCrashed: boolean[] = [];
 let animationFrameId: number | null = null;
+
+const defaultAction: RocketAction = { throttle: 0, coldGas: 0 };
 
 function animationLoop(timestamp: number): void {
   if (!currentStates) {
@@ -43,6 +46,8 @@ function animationLoop(timestamp: number): void {
     const landingX = canvasCenterX + state.x * Constants.SCALE_FACTOR;
     const landingY = canvasBottom - state.y * Constants.SCALE_FACTOR;
 
+    const action = currentActions?.[index] ?? defaultAction;
+
     if (areCrashed[index]) {
       const elapsedTime = timestamp - explosionStartTimes[index];
       explosionFrameCounters[index] = Math.floor(
@@ -59,7 +64,7 @@ function animationLoop(timestamp: number): void {
         );
       }
     } else {
-      renderRocket(ctx, canvas.width, canvas.height, state);
+      renderRocket(ctx, canvas.width, canvas.height, state, action);
     }
   });
 
@@ -68,10 +73,13 @@ function animationLoop(timestamp: number): void {
 
 export function renderStates(
   states: RocketState[],
+  actions?: RocketAction[],
   landingMessages?: ("safe" | "unsafe")[],
 ): void {
   try {
     currentStates = states;
+    currentActions = actions ?? null;
+
     if (states.length !== areCrashed.length) {
       explosionFrameCounters = new Array(states.length).fill(0);
       explosionStartTimes = new Array(states.length).fill(0);
@@ -90,14 +98,17 @@ export function renderStates(
       });
     } else {
       states.forEach((state, index) => {
-        const hasCrashed =
-          state.y <= 0 &&
-          (state.speed > Constants.SPEED_THRESHOLD ||
-            Math.abs(state.relativeAngle) > Constants.ANGLE_THRESHOLD);
-        if (hasCrashed && !areCrashed[index]) {
-          areCrashed[index] = true;
-          explosionFrameCounters[index] = 0;
-          explosionStartTimes[index] = performance.now();
+        if (!areCrashed[index]) {
+          const hasCrashed =
+            state.y <= 0 &&
+            (state.speed > Constants.SPEED_THRESHOLD ||
+              Math.abs(state.relativeAngle) > Constants.ANGLE_THRESHOLD);
+
+          if (hasCrashed) {
+            areCrashed[index] = true;
+            explosionFrameCounters[index] = 0;
+            explosionStartTimes[index] = performance.now();
+          }
         }
         if (areCrashed[index] && state.y > 0) {
           areCrashed[index] = false;
