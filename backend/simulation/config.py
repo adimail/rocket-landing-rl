@@ -25,26 +25,28 @@ def get_random_in_range(range_key: str, fallback: List[float]) -> float:
 
 def get_initial_state():
     # Position randomization
-    x = get_random_in_range("rocket.position_limits.x", [-50.0, 50.0])
-    y = get_random_in_range("rocket.position_limits.y", [150.0, 190.0])
+    x = round(get_random_in_range("rocket.position_limits.x", [-50.0, 50.0]), 2)
+    y = round(get_random_in_range("rocket.position_limits.y", [150.0, 190.0]), 2)
 
     # Velocity randomization
-    vx = get_random_in_range("rocket.velocity_limits.vx", [-3.0, -1.0])
-    vy = get_random_in_range("rocket.velocity_limits.vy", [-13.0, -7.0])
+    vx = round(get_random_in_range("rocket.velocity_limits.vx", [-3.0, -1.0]), 2)
+    vy = round(get_random_in_range("rocket.velocity_limits.vy", [-13.0, -7.0]), 2)
 
     # Acceleration randomization
-    ax = get_random_in_range("rocket.acceleration_limits.ax", [-0.5, 0.5])
-    ay = get_random_in_range("rocket.acceleration_limits.ay", [-0.5, 0.5])
+    ax = round(get_random_in_range("rocket.acceleration_limits.ax", [-0.5, 0.5]), 2)
+    ay = round(get_random_in_range("rocket.acceleration_limits.ay", [-0.5, 0.5]), 2)
 
     # Attitude randomization
-    angle = get_random_in_range("rocket.attitude_limits.angle", [0.0, 0.4])
-    angular_velocity = get_random_in_range(
-        "rocket.attitude_limits.angularVelocity", [0.0, 0.16]
+    angle = round(get_random_in_range("rocket.attitude_limits.angle", [0.0, 0.4]), 2)
+    angular_velocity = round(
+        get_random_in_range("rocket.attitude_limits.angularVelocity", [0.0, 0.16]), 2
     )
 
     # Mass randomization
-    mass = get_random_in_range("rocket.mass_limits.mass", [34000, 38000])
-    fuel_mass = get_random_in_range("rocket.mass_limits.fuelMass", [370000, 410000])
+    mass = round(get_random_in_range("rocket.mass_limits.mass", [34000, 38000]), 2)
+    fuel_mass = round(
+        get_random_in_range("rocket.mass_limits.fuelMass", [370000, 410000]), 2
+    )
 
     return {
         "x": x,

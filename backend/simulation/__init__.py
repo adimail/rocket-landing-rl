@@ -114,13 +114,25 @@ class SimulationController:
             self._log("exception", f"Simulation pause failed: {e}")
             raise
 
-    def set_action(self, actions: List[Tuple[float, float]]):
-        """Set the current action from external source (e.g., WebSocket)."""
-        if len(actions) != self.num_rockets:
+    def set_action(self, action: Tuple[float, float], rocket_index: int):
+        """Set the action for a specific rocket.
+
+        Args:
+            action: Tuple containing (throttle, cold_gas_control)
+            rocket_index: Index of the rocket to apply the action to
+        """
+        if rocket_index < 0 or rocket_index >= self.num_rockets:
             raise ValueError(
-                f"Expected {self.num_rockets} actions, but got {len(actions)}"
+                f"Invalid rocket index: {rocket_index}. Should be between 0 and {self.num_rockets-1}"
             )
-        self.current_actions = actions
+
+        self.current_actions[rocket_index] = action
+
+        if self.log_action:
+            self._log(
+                "debug",
+                f"Action set for rocket {rocket_index}: throttle={action[0]}, cold_gas={action[1]}",
+            )
 
     async def _simulation_loop(self):
         all_rockets_landed = all(self.rocket_touchdown_status)

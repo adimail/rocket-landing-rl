@@ -85,13 +85,14 @@ class Rocket:
             acceleration = self.physics_engine.calculate_acceleration(
                 net_force, total_mass
             )
-            self.state["ax"], self.state["ay"] = acceleration
+            self.state["ax"] = round(acceleration[0], 2)
+            self.state["ay"] = round(acceleration[1], 2)
 
             # Calculate angular acceleration - modified to ensure smooth changes
             angular_acceleration = self.physics_engine.calculate_angular_acceleration(
                 throttle, cold_gas_control
             )
-            self.state["angularAcceleration"] = angular_acceleration
+            self.state["angularAcceleration"] = round(angular_acceleration, 2)
 
             # Special case for the first step - use full Verlet from the start
             # This ensures smooth motion from the beginning
@@ -104,11 +105,13 @@ class Rocket:
 
             # Update current state with the new state values
             for key in new_state:
-                self.state[key] = new_state[key]
+                self.state[key] = round(new_state[key], 2)
 
             # Update fuel mass
             fuel_used = self.physics_engine.calculate_fuel_consumption(throttle, dt)
-            self.state["fuelMass"] = max(self.state["fuelMass"] - fuel_used, 0.0)
+            self.state["fuelMass"] = round(
+                max(self.state["fuelMass"] - fuel_used, 0.0), 2
+            )
 
             self.first_step = False
 

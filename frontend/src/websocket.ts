@@ -1,4 +1,4 @@
-import type { RocketState } from "./types";
+import type { RocketState, RocketAction } from "./types";
 import { renderStates } from "@/render";
 
 export class RocketWebSocket {
@@ -37,23 +37,21 @@ export class RocketWebSocket {
   private handleMessage(event: MessageEvent): void {
     try {
       const data = JSON.parse(event.data);
-      if (data.landing) {
-        data.landing.forEach((landing: "safe" | "unsafe", index: number) => {
-          if (landing === "safe") {
-            console.log(
-              `[RocketWebSocket] Rocket ${index + 1} landing was safe!`,
-            );
-          } else if (landing === "unsafe") {
-            console.log(
-              `[RocketWebSocket] Rocket ${index + 1} landing was unsafe!`,
-            );
-          }
-        });
-      }
 
-      if (data.state) {
+      if (data.step) {
+        const states: RocketState[] = data.step.state;
+        const landingMessages: ("safe" | "unsafe")[] | undefined = data.landing;
+        renderStates(states, landingMessages);
+      } else if (data.state) {
         const states: RocketState[] = data.state;
         renderStates(states, data.landing);
+      }
+
+      if (data.initial) {
+        console.log("[RocketWebSocket] Received initial state.");
+      }
+      if (data.restart) {
+        console.log("[RocketWebSocket] Simulation restarted.");
       }
     } catch (err) {
       console.error("[RocketWebSocket] Failed to parse message:", err);
@@ -115,6 +113,28 @@ export class RocketWebSocket {
       this.socket.send(JSON.stringify({ speed }));
     } catch (err) {
       console.error("[RocketWebSocket] Failed to send speed:", err);
+    }
+  }
+
+  public sendAction(action: RocketAction, rocketIndex: number = 0): void {
+    try {
+      if (this.socket.readyState !== WebSocket.OPEN) {
+        console.warn("[RocketWebSocket] Socket not open, cannot send action");
+        return;
+      }
+
+      const throttle = Math.max(0, Math.min(1, action.throttle));
+      const coldGasControl = Math.max(-1, Math.min(1, action.coldGasControl));
+
+      const payload = {
+        action: { throttle, coldGasControl },
+        rocket_index: rocketIndex,
+        user: true,
+      };
+
+      this.socket.send(JSON.stringify(payload));
+    } catch (err) {
+      console.error("[RocketWebSocket] Failed to send action:", err);
     }
   }
 

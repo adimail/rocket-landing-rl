@@ -21,8 +21,13 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
 
         try:
             states = self.sim.reset()
-            self.send_json({"state": states, "initial": True})
-
+            self.send_json(
+                {
+                    "step": {"state": states, "reward": None, "done": False},
+                    "action": None,
+                    "initial": True,
+                }
+            )
         except Exception as e:
             self.logger.error(f"Failed to send initial state: {e}")
 
@@ -34,9 +39,8 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
     def on_message(self, message):
         try:
             data = json.loads(message)
-            command = data.get("command")
-            if command:
-                self.handle_command(command)
+            if "command" in data:
+                self.handle_command(data["command"])
                 return
 
             if "speed" in data:
@@ -44,12 +48,22 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.sim.sim_speed = max(speed, 0.01)
                 return
 
-            throttle = data.get("throttle", 0.0)
-            cold_gas_control = data.get("coldGasControl", 0.0)
+            if "action" in data:
+                rocket_index = int(data.get("rocket_index", 0))
+                action = data["action"]
+                try:
+                    if isinstance(action, dict):
+                        throttle = float(action.get("throttle", 0.0))
+                        cold_gas = float(action.get("coldGasControl", 0.0))
+                        action_tuple = (throttle, cold_gas)
+                    else:
+                        action_tuple = (float(action[0]), float(action[1]))
+                except Exception as inner_e:
+                    self.logger.error(f"Parsing action failed: {inner_e}")
+                    return
 
-            if not self.sim.paused:
-                actions = [(throttle, cold_gas_control)] * self.sim.num_rockets
-                self.sim.set_action(actions)
+                self.sim.set_action(action_tuple, rocket_index)
+                return
 
         except Exception as e:
             self.logger.error(f"WebSocket message handling failed: {e}")
@@ -62,7 +76,13 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.sim.start(self.send_state_update)
             elif command == "restart":
                 states = self.sim.reset()
-                self.send_json({"state": states, "restart": True})
+                self.send_json(
+                    {
+                        "step": {"state": states, "reward": None, "done": False},
+                        "action": None,
+                        "restart": True,
+                    }
+                )
         except Exception as e:
             self.logger.error(f"Command handling failed: {e}")
 
@@ -74,47 +94,48 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def send_state_update(self, states, rewards, dones):
         try:
+            payload = {
+                "step": {
+                    "state": states,
+                    "reward": rewards,
+                    "done": dones,
+                },
+                "action": self.sim.current_actions,
+            }
+
             all_done = all(dones)
             if all_done:
-                safeSpeedThreshold = self.sim.rockets[0].rocket.config.get(
+                safe_speed_threshold = self.sim.rockets[0].rocket.config.get(
                     "env.safeSpeedThreshold"
                 )
-                safeAngleThreshold = self.sim.rockets[0].rocket.config.get(
+                safe_angle_threshold = self.sim.rockets[0].rocket.config.get(
                     "env.safeAngleThreshold"
                 )
-
                 landing_messages = []
                 for state in states:
                     is_safe = (
-                        state["speed"] <= safeSpeedThreshold
-                        and state["relativeAngle"] <= safeAngleThreshold
+                        state.get("speed", 0) <= safe_speed_threshold
+                        and state.get("relativeAngle", 0) <= safe_angle_threshold
                     )
                     landing_messages.append("safe" if is_safe else "unsafe")
 
-                self.io_loop.add_callback(
-                    self.send_json,
-                    {
-                        "landing": landing_messages,
-                        "state": states,
-                        "done": True,
-                    },
-                )
-                self.logger.info(f"Simulation over. Landing are {landing_messages}")
+                payload["landing"] = landing_messages
+                self.logger.info(f"Simulation over. Landings are: {landing_messages}")
 
-                if self.config.get("env.loop"):
-                    self.logger.info("[LOOP] Restarting simulation...")
-                    states = self.sim.reset()
-                    self.sim.start(self.send_state_update)
-                    self.send_json({"state": states, "restart": True})
+                payload["step"]["done"] = True
 
-            else:
-                self.io_loop.add_callback(
-                    self.send_json,
+            self.io_loop.add_callback(self.send_json, payload)
+
+            if all_done and self.config.get("env.loop"):
+                self.logger.info("[LOOP] Restarting simulation...")
+                states = self.sim.reset()
+                self.sim.start(self.send_state_update)
+                self.send_json(
                     {
-                        "state": states,
-                        "reward": rewards,
-                        "done": dones,
-                    },
+                        "step": {"state": states, "reward": None, "done": False},
+                        "action": None,
+                        "restart": True,
+                    }
                 )
 
         except Exception as e:
