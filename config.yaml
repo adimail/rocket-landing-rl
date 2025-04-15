@@ -2,10 +2,10 @@ app:
   PORT: 8080
 
 env:
-  num_rockets: 30 # Number of rockets to simulate
+  num_rockets: 2 # Number of rockets to simulate
   gravity: -9.81  # m/s²
-  thrust_power: 20.0 # Newtons
-  cold_gas_thrust_power: 0.5 # Torque
+  thrust_power: 1700000 # Newtons
+  cold_gas_thrust_power: 55 # Torque
   fuel_consumption_rate: 0.1 # kg/second
   time_step: 0.1 # seconds
   max_steps: 1000

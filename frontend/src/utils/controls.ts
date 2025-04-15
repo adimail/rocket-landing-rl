@@ -66,9 +66,9 @@ export class RocketControls {
     if (hasLeft && hasRight) {
       coldGas = 0;
     } else if (hasLeft) {
-      coldGas = 1.0;
-    } else if (hasRight) {
       coldGas = -1.0;
+    } else if (hasRight) {
+      coldGas = 1.0;
     }
 
     const throttle = hasUp ? 1.0 : 0;
@@ -85,9 +85,6 @@ export class RocketControls {
         coldGasControl: coldGas,
       };
       this.socket.sendAction(action, this.rocketIndex);
-      console.log(
-        `[RocketControls] Action sent: throttle=${throttle}, coldGas=${coldGas}`,
-      );
     } catch (err) {
       console.error("[RocketControls] Failed to send action:", err);
     }

@@ -5,7 +5,7 @@ from backend.config import Config
 class PhysicsEngine:
     def __init__(self, config: Config):
         self.gravity = config.get("env.gravity") or -9.81
-        self.thrust_power = config.get("env.thrust_power") or 20.0
+        self.thrust_power = config.get("env.thrust_power") or 1000000
         self.cold_gas_thrust_power = config.get("env.cold_gas_thrust_power") or 0.5
         self.fuel_consumption_rate = config.get("env.fuel_consumption_rate") or 0.1
         self.dt = config.get("env.time_step") or 0.2

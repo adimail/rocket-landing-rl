@@ -1,6 +1,6 @@
 import os
 import re
-import ast
+import json
 import math
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -56,11 +56,8 @@ class SimulationLogEval:
             timestamp_str = match.group("timestamp").strip()
             try:
                 timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
-
                 dict_str = match.group("dict_data")
-                dict_str = dict_str.replace("np.float64(", "").replace(")", "")
-
-                step_data = ast.literal_eval(dict_str)
+                step_data = json.loads(dict_str)  # <- safer and correct
                 return timestamp, step_data
             except Exception as e:
                 print(f"[ERROR] Failed to parse log line at {timestamp_str}: {e}")
