@@ -28,7 +28,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                         "state": states,
                         "reward": None,
                         "done": False,
-                        "action_taken": None,
+                        "prev_action_taken": None,
                     },
                     "initial": True,
                 }
@@ -120,14 +120,14 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
     ):
         """Callback function invoked by SimulationController after a step."""
         try:
-            action_taken = self.sim.prev_action_taken.copy()
+            prev_action_taken = self.sim.prev_action_taken.copy()
 
             payload: Dict[str, Any] = {
                 "step": {
                     "state": states,
                     "reward": rewards,
                     "done": dones,
-                    "action_taken": action_taken,
+                    "prev_action_taken": prev_action_taken,
                 },
             }
 
@@ -169,7 +169,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                         "state": states,
                         "reward": None,
                         "done": False,
-                        "action_taken": None,
+                        "prev_action_taken": None,
                     },
                     "restart": True,
                 }

@@ -42,8 +42,11 @@ export class RocketWebSocket {
 
       if (data.step) {
         const states: RocketState[] = data.step.state;
-        if (data.step.action_taken && Array.isArray(data.step.action_taken)) {
-          actions = data.step.action_taken as RocketAction[];
+        if (
+          data.step.prev_action_taken &&
+          Array.isArray(data.step.prev_action_taken)
+        ) {
+          actions = data.step.prev_action_taken as RocketAction[];
         }
         const landingMessages: ("safe" | "unsafe")[] | undefined = data.landing;
         renderStates(states, actions, landingMessages);

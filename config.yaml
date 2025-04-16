@@ -2,7 +2,7 @@ app:
   PORT: 8080
 
 env:
-  num_rockets: 5
+  num_rockets: 20
   gravity: -9.81 # m/s²
   thrust_power: 15000000 # N
   cold_gas_thrust_power: 70000 # N
@@ -12,7 +12,7 @@ env:
   safeSpeedThreshold: 60
   safeAngleThreshold: 5
   speed: 1
-  loop: false
+  loop: true
 
 rocket:
   position_limits: # meters

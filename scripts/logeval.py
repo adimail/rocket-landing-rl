@@ -344,7 +344,6 @@ if __name__ == "__main__":
         "angle",
         "angularVelocity",
         "angularAcceleration",
-        "mass",
         "fuelMass",
         "speed",
         "relativeAngle",
