@@ -3,16 +3,29 @@ app:
 
 env:
   num_rockets: 20
-  gravity: -9.81 # m/s²
-  thrust_power: 15000000 # N
-  cold_gas_thrust_power: 70000 # N
-  fuel_consumption_rate: 1700 # kg / (s * throttle)
-  time_step: 0.1 # s
+  gravity: -9.81                    # m/s²
+  thrust_power: 15000000            # N
+  cold_gas_thrust_power: 70000      # N
+  fuel_consumption_rate: 1700       # kg / (s * throttle)
+  time_step: 0.1                    # s
   max_steps: 1000
-  safeSpeedThreshold: 60
-  safeAngleThreshold: 5
-  speed: 1
-  loop: true
+  speed: 1                          # Speed of simulation
+  loop: false
+
+  # Strictest (best) landing conditions
+  safeSpeedThresholdVx: 20.0        # m/s
+  safeSpeedThresholdVy: 20.0        # m/s
+  safeAngleThresholdDeg: 5.0        # degrees
+
+  # Acceptable but not perfect
+  goodSpeedThresholdVx: 30.0        # m/s
+  goodSpeedThresholdVy: 30.0        # m/s
+  goodAngleThresholdDeg: 5.0        # degrees
+
+  # Acceptable but terrible
+  okSpeedThresholdVx: 40.0          # m/s
+  okSpeedThresholdVy: 40.0          # m/s
+  okAngleThresholdDeg: 80.0         # degrees
 
 rocket:
   position_limits: # meters

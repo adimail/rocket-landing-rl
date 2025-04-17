@@ -5,6 +5,7 @@ import json
 from typing import Dict, List, Any
 
 from backend.simulation import SimulationController
+from backend.utils import evaluate_landing
 
 
 class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -133,21 +134,11 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             all_done = all(dones)
             if all_done:
-                safe_speed_threshold = self.sim.rockets[0].rocket.config.get(
-                    "env.safeSpeedThreshold"
-                )
-                safe_angle_threshold = self.sim.rockets[0].rocket.config.get(
-                    "env.safeAngleThreshold"
-                )
                 landing_messages = []
+
                 for state in states:
-                    speed = state.get("speed", float("inf"))
-                    rel_angle = state.get("relativeAngle", float("inf"))
-                    is_safe = (
-                        speed <= safe_speed_threshold
-                        and rel_angle <= safe_angle_threshold
-                    )
-                    landing_messages.append("safe" if is_safe else "unsafe")
+                    msg = evaluate_landing(state, self.config)
+                    landing_messages.append(msg["landing_message"])
 
                 payload["landing"] = landing_messages
                 self.logger.info(f"Landings: {landing_messages}")
