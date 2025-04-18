@@ -1,7 +1,8 @@
 PyYAML
 tornado
-numpy
 pytest
 tqdm
 pandas
 matplotlib
+stable-baselines3[extra]
+gymnasium>=0.26.0,<0.29

@@ -2,7 +2,7 @@ app:
   PORT: 8080
 
 env:
-  num_rockets: 20
+  num_rockets: 2
   gravity: -9.81                    # m/s²
   thrust_power: 15000000            # N
   cold_gas_thrust_power: 70000      # N
@@ -51,3 +51,74 @@ physics:
   rocket_radius: 1.85
   cold_gas_moment_arm: 1.85
   angular_damping: 0.05
+
+rl:
+  rewards:
+    # === Terminal Rewards ===
+    landing_success: 100.0      # Reward for successful landing
+    crash_ground: -100.0        # Penalty for hitting ground too hard/wrong angle/off target
+    crash_tipped_over: -100.0   # Penalty for tipping over mid-air (e.g., angle > 90 deg)
+    crash_out_of_bounds: -100.0 # Penalty for going out of bounds
+
+    # === Shaping Rewards (Applied per step) ===
+    # Use these carefully, they can make learning harder if not designed well.
+    # Example: reward = potential_based_shaping + time_penalty + control_penalty
+    time_penalty: -0.01          # Small penalty per step to encourage efficiency
+    # Proximity shaping (potential-based is often good):
+    # reward_shaping_potential = - lambda * distance_from_target
+    # shaping_reward = (new_potential - old_potential)
+    distance_weight: 0.001        # Weight for distance-based potential shaping
+    angle_alignment_weight: 0.005 # Weight for angle-based potential shaping (penalize tilt)
+    velocity_alignment_weight: 0.002 # Weight for velocity based potential shaping (penalize high speed near ground)
+    # Control penalties:
+    throttle_penalty_factor: 0.0 # Penalty for using main engine throttle
+    rcs_penalty_factor: 0.0      # Penalty for using cold gas thrusters
+
+    # Core rewards
+    landing: 1000.0      # Reward for perfect landing
+    crash: -500.0        # Penalty for crashing
+    out_of_bounds: -100.0 # Penalty for going out of bounds
+    # Reward weights
+    stability: 0.2       # Weight for maintaining stability
+
+  training:
+    total_timesteps: 1000000
+    eval_episodes: 10
+    save_interval: 50000
+    log_interval: 1000
+
+    algorithm:
+      PPO:
+        learning_rate: 0.0003
+        batch_size: 64
+        n_steps: 2048
+        gamma: 0.99
+        ent_coef: 0.01
+        n_epochs: 10
+        gae_lambda: 0.95
+        max_grad_norm: 0.5
+        clip_range: 0.2
+
+      SAC:
+        learning_rate: 0.0003
+        batch_size: 256
+        buffer_size: 1000000
+        gamma: 0.99
+        tau: 0.005
+        ent_coef: "auto"
+        target_update_interval: 1
+        train_freq: 1
+        gradient_steps: 1
+        learning_starts: 10000
+
+      TD3:
+        learning_rate: 0.001
+        batch_size: 100
+        buffer_size: 1000000
+        gamma: 0.99
+        tau: 0.005
+        policy_delay: 2
+        target_policy_noise: 0.2
+        noise_clip: 0.5
+        train_freq: 1
+        learning_starts: 10000
