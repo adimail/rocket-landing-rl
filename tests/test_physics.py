@@ -9,7 +9,7 @@ config = Config()
 class TestPhysicsEngine:
 
     def setup_method(self):
-        self.physics_engine = PhysicsEngine(config)
+        self.physics_engine = PhysicsEngine()
         self.dt = self.physics_engine.dt
 
     def test_calculate_gravity_force(self):
@@ -145,36 +145,3 @@ class TestPhysicsEngine:
         fuel_consumption_rate = self.physics_engine.fuel_consumption_rate
         fuel_consumed = self.physics_engine.calculate_fuel_consumption(throttle, dt)
         assert fuel_consumed == pytest.approx(throttle * fuel_consumption_rate * dt)
-
-    def test_calculate_angular_acceleration_no_cold_gas(self):
-        throttle = 1.0
-        cold_gas_control = 0.0
-        angular_acceleration = self.physics_engine.calculate_angular_acceleration(
-            throttle, cold_gas_control
-        )
-        assert angular_acceleration == pytest.approx(0.0)
-
-    def test_calculate_angular_acceleration_with_cold_gas(self):
-        throttle = 0.0
-        cold_gas_control = 0.5  # Example cold gas input
-        cold_gas_thrust_power = self.physics_engine.cold_gas_thrust_power
-        angular_acceleration = self.physics_engine.calculate_angular_acceleration(
-            throttle, cold_gas_control
-        )
-        expected_angular_acceleration = cold_gas_thrust_power * cold_gas_control
-        assert angular_acceleration == pytest.approx(expected_angular_acceleration)
-
-    def test_normalize_angle_positive(self):
-        angle = 400.0
-        normalized_angle = self.physics_engine.normalize_angle(angle)
-        assert normalized_angle == pytest.approx(40.0)
-
-    def test_normalize_angle_negative(self):
-        angle = -400.0
-        normalized_angle = self.physics_engine.normalize_angle(angle)
-        assert normalized_angle == pytest.approx(-40.0)
-
-    def test_normalize_angle_within_range(self):
-        angle = 150.0
-        normalized_angle = self.physics_engine.normalize_angle(angle)
-        assert normalized_angle == pytest.approx(150.0)

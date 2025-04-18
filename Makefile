@@ -30,6 +30,9 @@ dev:
 	@echo "Starting dev server..."
 	cd frontend && npm run dev
 
+train:
+	. venv/bin/activate && python3 -m scripts.train
+
 eval: clean-output
 	. venv/bin/activate && python3 scripts/logeval.py
 
