@@ -48,7 +48,9 @@ export class RocketWebSocket {
         ) {
           actions = data.step.prev_action_taken as RocketAction[];
         }
-        const landingMessages: ("safe" | "unsafe")[] | undefined = data.landing;
+        const landingMessages:
+          | ("unsafe" | "safe" | "ok" | "good")[]
+          | undefined = data.landing;
         renderStates(states, actions, landingMessages);
       } else if (data.state) {
         const states: RocketState[] = data.state;

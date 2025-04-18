@@ -12,7 +12,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
     def initialize(self, logger):
         self.logger = logger
         self.config = Config()
-        num_rockets = self.config.get("env.num_rockets") or 1
+        num_rockets = self.config.get("environment.num_rockets") or 1
         self.sim = SimulationController(num_rockets=num_rockets)
         self.client_connected = False
         self.io_loop = IOLoop.current()
@@ -145,7 +145,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
 
             self.io_loop.add_callback(self.send_json, payload)
 
-            if all_done and self.config.get("env.loop"):
+            if all_done and self.config.get("simulation.loop"):
                 self.io_loop.call_later(0.1, self._initiate_restart)
 
         except Exception as e:

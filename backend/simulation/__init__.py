@@ -31,7 +31,7 @@ class SimulationController:
             ]
 
             self.dt = (
-                self.rockets[0].dt if self.rockets else self.config.get("env.time_step")
+                self.rockets[0].dt if self.rockets else self.config.get("simulation.time_step")
             )
 
             self.paused = True
@@ -41,7 +41,7 @@ class SimulationController:
             self.max_steps = (
                 self.rockets[0].max_steps
                 if self.rockets
-                else self.config.get("env.max_steps")
+                else self.config.get("simulation.max_steps")
             )
             self._running = False
             self.state_callback: Optional[
@@ -55,7 +55,7 @@ class SimulationController:
                 {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
 
-            self.sim_speed = min(self.config.get("env.speed"), 10)
+            self.sim_speed = min(self.config.get("simulation.speed"), 10)
 
             self._log(
                 "info",

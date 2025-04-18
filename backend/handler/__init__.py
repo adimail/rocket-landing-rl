@@ -26,7 +26,7 @@ class SimulationSpeedHandler(BaseHandler):
     def get(self):
         try:
             self.log_request()
-            current_speed = self.config.get("env.speed")
+            current_speed = self.config.get("simulation.speed")
             self.write(json.dumps({"speed": current_speed}))
         except Exception as e:
             self.logger.error(f"Failed to retrieve simulation speed: {e}")

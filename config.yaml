@@ -1,85 +1,78 @@
 app:
   PORT: 8080
 
-env:
-  num_rockets: 2
-  gravity: -9.81                    # m/s²
-  thrust_power: 15000000            # N
-  cold_gas_thrust_power: 70000      # N
-  fuel_consumption_rate: 1700       # kg / (s * throttle)
-  time_step: 0.1                    # s
+simulation:
+  time_step: 0.1                  # s
   max_steps: 1000
-  speed: 1                          # Speed of simulation
+  speed: 1                        # Speed of simulation
   loop: false
 
-  # Strictest (best) landing conditions
-  safeSpeedThresholdVx: 20.0        # m/s
-  safeSpeedThresholdVy: 20.0        # m/s
-  safeAngleThresholdDeg: 5.0        # degrees
+environment:
+  gravity: -9.81                  # m/s²
+  air_density: 1.225              # kg/m³
+  num_rockets: 2
 
-  # Acceptable but not perfect
-  goodSpeedThresholdVx: 30.0        # m/s
-  goodSpeedThresholdVy: 30.0        # m/s
-  goodAngleThresholdDeg: 5.0        # degrees
-
-  # Acceptable but terrible
-  okSpeedThresholdVx: 40.0          # m/s
-  okSpeedThresholdVy: 40.0          # m/s
-  okAngleThresholdDeg: 80.0         # degrees
+landing:
+  thresholds:
+    safe:
+      speed_vx: 30.0              # m/s
+      speed_vy: 30.0              # m/s
+      angle: 5.0                  # degrees
+    good:
+      speed_vx: 40.0              # m/s
+      speed_vy: 40.0              # m/s
+      angle: 8.0                  # degrees
+    ok:
+      speed_vx: 50.0              # m/s
+      speed_vy: 50.0              # m/s
+      angle: 10.0                 # degrees
 
 rocket:
-  position_limits: # meters
+  thrust_power: 15000000          # N
+  cold_gas_thrust_power: 70000    # N
+  fuel_consumption_rate: 1700     # kg / (s * throttle)
+  radius: 1.85                    # m
+  reference_area: 10.8            # m²
+  drag_coefficient: 0.8
+  cold_gas_moment_arm: 1.85       # m
+  angular_damping: 0.05
+
+  position_limits:                # meters
     x: [-2000.0, 2000.0]
     y: [2000.0, 2300.0]
-  velocity_limits: # m/s
+  velocity_limits:                # m/s
     vx: [-30.0, -10.0]
     vy: [-250.0, -230.0]
-  acceleration_limits: # m/s²
+  acceleration_limits:            # m/s²
     ax: [-5, 5]
     ay: [-5, 5]
   attitude_limits:
-    angle: [-15, 15] # degrees
-    angularVelocity: [-7.5, 7.5] # degrees/second
+    angle: [-15, 15]              # degrees
+    angular_velocity: [-7.5, 7.5] # degrees/second
   mass_limits:
-    mass: [34000, 38000] # kg (dry mass of the booster)
-    fuelMass: [370000, 410000] # kg (initial fuel mass)
-
-physics:
-  air_density: 1.225
-  drag_coefficient: 0.8
-  reference_area: 10.8
-  rocket_radius: 1.85
-  cold_gas_moment_arm: 1.85
-  angular_damping: 0.05
+    dry_mass: [34000, 38000]      # kg (dry mass of the booster)
+    fuel_mass: [370000, 410000]   # kg (initial fuel mass)
 
 rl:
   rewards:
-    # === Terminal Rewards ===
-    landing_success: 100.0      # Reward for successful landing
-    crash_ground: -100.0        # Penalty for hitting ground too hard/wrong angle/off target
-    crash_tipped_over: -100.0   # Penalty for tipping over mid-air (e.g., angle > 90 deg)
-    crash_out_of_bounds: -100.0 # Penalty for going out of bounds
+    landing: 1000.0               # Reward for perfect landing
+    landing_success: 100.0        # Reward for successful landing
+    crash: -500.0                 # Penalty for crashing
+    crash_ground: -100.0          # Penalty for hitting ground too hard/wrong angle/off target
+    crash_tipped_over: -100.0     # Penalty for tipping over mid-air
+    out_of_bounds: -100.0         # Penalty for going out of bounds
+    crash_out_of_bounds: -100.0   # Duplicate of out_of_bounds - consolidated
 
-    # === Shaping Rewards (Applied per step) ===
-    # Use these carefully, they can make learning harder if not designed well.
-    # Example: reward = potential_based_shaping + time_penalty + control_penalty
-    time_penalty: -0.01          # Small penalty per step to encourage efficiency
-    # Proximity shaping (potential-based is often good):
-    # reward_shaping_potential = - lambda * distance_from_target
-    # shaping_reward = (new_potential - old_potential)
-    distance_weight: 0.001        # Weight for distance-based potential shaping
-    angle_alignment_weight: 0.005 # Weight for angle-based potential shaping (penalize tilt)
-    velocity_alignment_weight: 0.002 # Weight for velocity based potential shaping (penalize high speed near ground)
-    # Control penalties:
-    throttle_penalty_factor: 0.0 # Penalty for using main engine throttle
-    rcs_penalty_factor: 0.0      # Penalty for using cold gas thrusters
+    time_penalty: -0.01           # Small penalty per step for efficiency
 
-    # Core rewards
-    landing: 1000.0      # Reward for perfect landing
-    crash: -500.0        # Penalty for crashing
-    out_of_bounds: -100.0 # Penalty for going out of bounds
-    # Reward weights
-    stability: 0.2       # Weight for maintaining stability
+    distance_weight: 0.001        # Weight for distance-based potential
+    angle_alignment_weight: 0.005 # Weight for angle-based potential
+    velocity_alignment_weight: 0.002 # Weight for velocity-based potential
+    stability: 0.2                # Weight for maintaining stability
+
+    # Control penalties
+    throttle_penalty_factor: 0.0  # Penalty for using main engine
+    rcs_penalty_factor: 0.0       # Penalty for using cold gas thrusters
 
   training:
     total_timesteps: 1000000

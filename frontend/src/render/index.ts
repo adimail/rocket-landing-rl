@@ -74,7 +74,7 @@ function animationLoop(timestamp: number): void {
 export function renderStates(
   states: RocketState[],
   actions?: RocketAction[],
-  landingMessages?: ("safe" | "unsafe")[],
+  landingMessages?: ("unsafe" | "safe" | "ok" | "good")[],
 ): void {
   try {
     currentStates = states;
@@ -93,6 +93,10 @@ export function renderStates(
           explosionFrameCounters[index] = 0;
           explosionStartTimes[index] = performance.now();
         } else if (landing === "safe") {
+          areCrashed[index] = false;
+        } else if (landing === "good") {
+          areCrashed[index] = false;
+        } else if (landing === "ok") {
           areCrashed[index] = false;
         }
       });

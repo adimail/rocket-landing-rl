@@ -7,19 +7,19 @@ class RocketControls:
     def __init__(self):
         try:
             self.config = Config()
-            self.dt = self.config.get("env.time_step")
+            self.dt = self.config.get("simulation.time_step")
             if not isinstance(self.dt, (int, float)) or self.dt <= 0:
-                print(f"Warning: Invalid env.time_step '{self.dt}', using default 0.1")
+                print(f"Warning: Invalid simulation.time_step '{self.dt}', using default 0.1")
                 self.dt = 0.1
 
             self.rocket = Rocket()
             self.touchdown = False
             self.steps = 0
 
-            self.max_steps = self.config.get("env.max_steps")
+            self.max_steps = self.config.get("simulation.max_steps")
             if not isinstance(self.max_steps, int) or self.max_steps <= 0:
                 print(
-                    f"Warning: Invalid env.max_steps '{self.max_steps}', using default 1000"
+                    f"Warning: Invalid simulation.max_steps '{self.max_steps}', using default 1000"
                 )
                 self.max_steps = 1000
 
