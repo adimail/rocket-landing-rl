@@ -2,12 +2,11 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 import logging
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any, Optional, TypeVar, cast
 
 from backend.utils import compute_reward
 from backend.rocket import Rocket
 from backend.simulation.config import get_rl_config
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,6 +14,8 @@ logger = logging.getLogger(__name__)
 REWARD_CRASH_DEFAULT = -100.0
 REWARD_OUT_OF_BOUNDS_DEFAULT = -50.0
 REWARD_TIPPED_OVER_DEFAULT = -75.0
+
+SpaceT = TypeVar("SpaceT", bound=spaces.Space)
 
 
 class RocketLandingEnv(gym.Env):
@@ -95,7 +96,6 @@ class RocketLandingEnv(gym.Env):
             self.action_space = spaces.Box(
                 low=np.array([0.0, -1.0], dtype=np.float32),
                 high=np.array([1.0, 1.0], dtype=np.float32),
-                shape=(2,),
                 dtype=np.float32,
             )
 
@@ -125,11 +125,9 @@ class RocketLandingEnv(gym.Env):
                 dtype=np.float32,
             )
 
-            # *** THE FIX IS HERE: shape=(6,) ***
             self.observation_space = spaces.Box(
                 low=self.observation_low,
                 high=self.observation_high,
-                shape=(6,),  # Corrected shape
                 dtype=np.float32,
             )
 
@@ -165,22 +163,23 @@ class RocketLandingEnv(gym.Env):
                     state.get("y", 0.0),
                     state.get("vx", 0.0),
                     state.get("vy", 0.0),
-                    state.get(
-                        "angle", 0.0
-                    ),  # Should be normalized in Rocket class if needed there
+                    state.get("angle", 0.0),
                     state.get("angularVelocity", 0.0),
                 ],
                 dtype=np.float32,
             )
-            # Optional: Clip observation to defined bounds if simulation might exceed them
-            # obs = np.clip(obs, self.observation_low, self.observation_high)
+
+            # Get the actual observation space bounds for clipping
+            low = cast(spaces.Box, self.observation_space).low
+            high = cast(spaces.Box, self.observation_space).high
+
+            obs = np.clip(obs, low, high)
             return obs
         except Exception as e:
             logger.error(f"Error getting observation: {e}", exc_info=True)
-            # Return a default observation (e.g., zeros) in case of error?
-            # Or re-raise the exception depending on desired robustness level.
-            # For RL, often better to crash early if state is corrupt.
-            raise
+            # Return zeros in case of error to avoid crashing the training
+            # but log the error for debugging
+            return np.zeros(6, dtype=np.float32)
 
     def _get_info(self) -> Dict[str, Any]:
         """Returns auxiliary information about the state (not used for RL training)."""
@@ -194,9 +193,7 @@ class RocketLandingEnv(gym.Env):
         }
         return info
 
-    def reset(
-        self, *, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None
-    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+    def reset(self, *, seed: Optional[int] = None) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Resets the environment to a randomized initial state."""
         super().reset(seed=seed)
 
@@ -242,18 +239,20 @@ class RocketLandingEnv(gym.Env):
             logger.warning(
                 f"Action {action} outside bounds {self.action_space}. Clipping."
             )
-            action = np.clip(action, self.action_space.low, self.action_space.high)
+            action_box = cast(spaces.Box, self.action_space)
+            action = np.clip(action, action_box.low, action_box.high)
 
         throttle = float(action[0])
         cold_gas_control = float(action[1])
 
         # --- Store state before action ---
-        y_before = self.rocket.state.get("y", 0.0)
-        vx_before = self.rocket.state.get("vx", 0.0)
-        vy_before = self.rocket.state.get("vy", 0.0)
-        angle_before = self.rocket.state.get("angle", 0.0)
-        ang_vel_before = self.rocket.state.get("angularVelocity", 0.0)
-        fuel_before = self.rocket.state.get("fuelMass", 0.0)
+        state_before = self.rocket.get_state()
+        y_before = state_before.get("y", 0.0)
+        vx_before = state_before.get("vx", 0.0)
+        vy_before = state_before.get("vy", 0.0)
+        angle_before = state_before.get("angle", 0.0)
+        ang_vel_before = state_before.get("angularVelocity", 0.0)
+        fuel_before = state_before.get("fuelMass", 0.0)
 
         # --- Step the Physics Simulation ---
         try:
@@ -368,8 +367,7 @@ class RocketLandingEnv(gym.Env):
         """Renders the environment (placeholder)."""
         if self.render_mode == "human":
             print("Rendering not implemented yet.")
-            pass
-        pass
+        return None
 
     def close(self):
         """Cleans up resources."""
