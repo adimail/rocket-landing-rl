@@ -1,4 +1,4 @@
-import type { RocketState, RocketAction } from "../types"; // Import RocketAction
+import type { RocketState, RocketAction } from "../types";
 import * as Constants from "@/utils/constants";
 import {
   renderBackground,
@@ -14,6 +14,7 @@ let explosionFrameCounters: number[] = [];
 let explosionStartTimes: number[] = [];
 let areCrashed: boolean[] = [];
 let animationFrameId: number | null = null;
+let rewards: number[] | null = null;
 
 const defaultAction: RocketAction = { throttle: 0, coldGas: 0 };
 
@@ -37,7 +38,7 @@ function animationLoop(timestamp: number): void {
 
   const { canvas, ctx } = setup;
   renderBackground(ctx, canvas.width, canvas.height);
-  renderStateText(currentStates);
+  renderStateText(currentStates, rewards);
 
   const canvasBottom = canvas.height - Constants.GROUND_OFFSET;
   const canvasCenterX = canvas.width / 2;
@@ -75,10 +76,12 @@ export function renderStates(
   states: RocketState[],
   actions?: RocketAction[],
   landingMessages?: ("unsafe" | "safe" | "ok" | "good")[],
+  newRewards?: number[],
 ): void {
   try {
     currentStates = states;
     currentActions = actions ?? null;
+    rewards = newRewards ?? null;
 
     if (states.length !== areCrashed.length) {
       explosionFrameCounters = new Array(states.length).fill(0);

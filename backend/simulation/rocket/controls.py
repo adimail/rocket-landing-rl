@@ -1,4 +1,4 @@
-from backend.utils import compute_reward
+from backend.rl.reward import calculate_reward
 from backend.rocket import Rocket
 from backend.config import Config
 
@@ -9,30 +9,14 @@ class RocketControls:
             self.config = Config()
             self.dt = self.config.get("simulation.time_step")
             if not isinstance(self.dt, (int, float)) or self.dt <= 0:
-                print(f"Warning: Invalid simulation.time_step '{self.dt}', using default 0.1")
+                print(
+                    f"Warning: Invalid simulation.time_step '{self.dt}', using default 0.1"
+                )
                 self.dt = 0.1
 
             self.rocket = Rocket()
             self.touchdown = False
             self.steps = 0
-
-            self.max_steps = self.config.get("simulation.max_steps")
-            if not isinstance(self.max_steps, int) or self.max_steps <= 0:
-                print(
-                    f"Warning: Invalid simulation.max_steps '{self.max_steps}', using default 1000"
-                )
-                self.max_steps = 1000
-
-            self.coef_vx_penalty = 0.15  # Penalty for horizontal velocity
-            self.coef_vy_penalty_base = 0.1  # Base penalty for vertical velocity
-            self.coef_angle_penalty = 0.1  # Penalty for deviation from vertical
-            self.vy_penalty_scale_factor = (
-                10.0  # How much the vy penalty increases near ground
-            )
-            self.vy_penalty_characteristic_height = (
-                300.0  # Altitude (m) at which scaling effect is significant
-            )
-            self.altitude_factor_scale = 100.0  # Denominator scale for altitude reward
 
         except Exception as err:
             print(f"FATAL Error initializing RocketControls: {err}")
@@ -68,14 +52,6 @@ class RocketControls:
 
             self.steps += 1
 
-            if self.steps >= self.max_steps:
-                self.touchdown = True
-                timeout_penalty = -100.0
-                print(
-                    f"Max steps ({self.max_steps}) reached. Applying timeout penalty."
-                )
-                return self.rocket.get_state(), timeout_penalty, True
-
             throttle = 0.0
             cold_gas_control = 0.0
             if isinstance(action, dict):
@@ -100,7 +76,7 @@ class RocketControls:
                 print(f"Error retrieving state_after: {state_after['error']}")
                 return state_after, -500.0, True
 
-            reward, self.touchdown = compute_reward(state_before, action, state_after)
+            reward, self.touchdown = calculate_reward(state_before, action, state_after)
             reward = float(reward)
 
             return state_after, reward, self.touchdown

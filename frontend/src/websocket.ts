@@ -42,28 +42,18 @@ export class RocketWebSocket {
 
       if (data.step) {
         const states: RocketState[] = data.step.state;
-        if (
-          data.step.prev_action_taken &&
-          Array.isArray(data.step.prev_action_taken)
-        ) {
+        if (data.step.prev_action_taken) {
           actions = data.step.prev_action_taken as RocketAction[];
         }
-        const landingMessages:
-          | ("unsafe" | "safe" | "ok" | "good")[]
-          | undefined = data.landing;
-        renderStates(states, actions, landingMessages);
+        renderStates(states, actions, data.landing, data.step.reward);
       } else if (data.state) {
-        const states: RocketState[] = data.state;
-        if (data.action && Array.isArray(data.action)) {
-          actions = data.action as RocketAction[];
-        }
-        renderStates(states, actions, data.landing);
+        renderStates(data.state, data.action, data.landing, data.step.reward);
       }
 
       if (data.initial) {
         console.log("[RocketWebSocket] Received initial state.");
         if (!actions && data.state) {
-          renderStates(data.state, undefined, data.landing);
+          renderStates(data.state, undefined, data.landing, data.step.reward);
         }
       }
       if (data.restart) {

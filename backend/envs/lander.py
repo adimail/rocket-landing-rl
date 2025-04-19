@@ -4,16 +4,12 @@ import numpy as np
 import logging
 from typing import Tuple, Dict, Any, Optional, TypeVar, cast
 
-from backend.utils import compute_reward
+from backend.rl.reward import calculate_reward
 from backend.rocket import Rocket
 from backend.simulation.config import get_rl_config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-REWARD_CRASH_DEFAULT = -100.0
-REWARD_OUT_OF_BOUNDS_DEFAULT = -50.0
-REWARD_TIPPED_OVER_DEFAULT = -75.0
 
 SpaceT = TypeVar("SpaceT", bound=spaces.Space)
 
@@ -79,13 +75,6 @@ class RocketLandingEnv(gym.Env):
             )  # Angle beyond which it's truncated
 
             self.max_episode_steps = self.rl_config.get("max_episode_steps", 1000)
-            self.reward_crash = self.rl_config.get("reward_crash", REWARD_CRASH_DEFAULT)
-            self.reward_out_of_bounds = self.rl_config.get(
-                "reward_out_of_bounds", REWARD_OUT_OF_BOUNDS_DEFAULT
-            )
-            self.reward_tipped_over = self.rl_config.get(
-                "reward_tipped_over", REWARD_TIPPED_OVER_DEFAULT
-            )
 
             self.rocket = Rocket()  # Rocket now loads its own config internally
             self.current_step = 0
@@ -261,7 +250,7 @@ class RocketLandingEnv(gym.Env):
         except Exception as e:
             logger.error(f"Error during rocket physics step: {e}", exc_info=True)
             observation = self._get_obs()
-            reward = self.reward_crash
+            reward = -100
             terminated = True
             truncated = False
             info = self._get_info()
@@ -304,7 +293,7 @@ class RocketLandingEnv(gym.Env):
             "angularVelocity": ang_vel_before,
             "fuelMass": fuel_before,
         }
-        reward, _ = compute_reward(
+        reward, _ = calculate_reward(
             state_before_minimal,
             action,
             state_after,

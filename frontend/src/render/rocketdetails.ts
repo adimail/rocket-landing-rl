@@ -1,29 +1,39 @@
 import type { RocketState } from "../types";
 
-export function renderStateText(states: RocketState[]): void {
+export function renderStateText(
+  states: RocketState[],
+  rewards: number[] | null,
+): void {
   try {
-    updateRocketStateDetails(states);
+    updateRocketStateDetails(states, rewards);
   } catch (error) {
     console.error("Error rendering rocket state details:", error);
   }
 }
 
-function updateRocketStateDetails(states: RocketState[]): void {
+function updateRocketStateDetails(
+  states: RocketState[],
+  rewards: number[] | null,
+): void {
   const detailsContainer = document.getElementById("rocketstatedetails");
   if (!detailsContainer) return;
 
   const format = (value: number) =>
-    Number.isFinite(value) ? value.toFixed(2) : "N/A";
+    Number.isFinite(value) ? value.toFixed(3) : "N/A";
 
   let htmlContent = "";
 
   states.forEach((state, index) => {
+    const reward = rewards?.[index];
+    const rewardDisplay =
+      reward !== undefined ? ` | reward: ${format(reward)}` : "";
+
     htmlContent += `
       <div style="margin-bottom: 12px; border: 1px solid #ccc; padding: 12px; border-radius: 6px;">
         <div style="font-weight: bold; margin-bottom: 6px;">
-          Rocket ${index + 1}
+          Rocket ${index + 1}${rewardDisplay}
         </div>
-		<hr/>
+        <hr/>
         <div style="margin-bottom: 4px;">Speed: <strong>${format(state.speed)}</strong> m/s</div>
         <div style="margin-bottom: 4px;">Relative Angle: <strong>${format(state.relativeAngle)}</strong>°</div>
         <ul style="list-style: none; padding-left: 0; margin: 0;">

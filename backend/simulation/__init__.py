@@ -31,18 +31,15 @@ class SimulationController:
             ]
 
             self.dt = (
-                self.rockets[0].dt if self.rockets else self.config.get("simulation.time_step")
+                self.rockets[0].dt
+                if self.rockets
+                else self.config.get("simulation.time_step")
             )
 
             self.paused = True
 
             self.rocket_touchdown_status: List[bool] = [False] * self.num_rockets
             self.rocket_steps: List[int] = [0] * self.num_rockets
-            self.max_steps = (
-                self.rockets[0].max_steps
-                if self.rockets
-                else self.config.get("simulation.max_steps")
-            )
             self._running = False
             self.state_callback: Optional[
                 Callable[[List[Dict], List[float], List[bool]], None]
