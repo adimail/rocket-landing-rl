@@ -2,6 +2,7 @@ from backend.simulation.rocket.controls import RocketControls
 from backend.logger import Logger
 from datetime import datetime
 import asyncio
+
 from backend.config import Config
 import json
 from typing import (
@@ -12,9 +13,18 @@ from typing import (
     Callable,
 )
 
+from backend.rl.agent import RLAgent
+
 
 class SimulationController:
-    def __init__(self, num_rockets=2, log_state=True, log_action=True, log_reward=True):
+    def __init__(
+        self,
+        num_rockets=2,
+        log_state=False,
+        log_action=False,
+        log_reward=False,
+        rl_agent: Optional[RLAgent] = None,
+    ):
         try:
             self.log_state = log_state
             self.log_action = log_action
@@ -45,6 +55,10 @@ class SimulationController:
                 Callable[[List[Dict], List[float], List[bool]], None]
             ] = None
 
+            self.rl_agent = rl_agent
+            self.agent_enabled = bool(rl_agent)
+            self.agent_controlled_indices = {0} if self.agent_enabled else set()
+
             self.current_actions: List[Dict[str, float]] = [
                 {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
@@ -56,7 +70,7 @@ class SimulationController:
 
             self._log(
                 "info",
-                f"SimulationController initialized with {self.num_rockets} rockets",
+                f"SimulationController initialized with {self.num_rockets} rockets. Agent control {'enabled' if self.agent_enabled else 'disabled'}.",
             )
         except Exception as e:
             self._log("exception", f"Failed to initialize SimulationController: {e}")
@@ -197,11 +211,41 @@ class SimulationController:
             loop_start_time = asyncio.get_event_loop().time()
 
             try:
-                states, rewards, dones = self.step(self.current_actions)
+                actions_for_this_step: List[Dict[str, float]] = []
+                current_sim_states = self.render()
+
+                for i in range(self.num_rockets):
+                    action_to_use = {"throttle": 0.0, "coldGas": 0.0}
+                    if (
+                        self.agent_enabled
+                        and i in self.agent_controlled_indices
+                        and self.rl_agent
+                    ):
+                        raw_state = current_sim_states[i]
+                        predicted_action = self.rl_agent.predict(raw_state)
+                        if predicted_action:
+                            action_to_use = predicted_action
+                        else:
+                            self._log(
+                                "warning",
+                                f"Agent prediction failed for rocket {i}. Using default action.",
+                            )
+                            action_to_use = {"throttle": 0.0, "coldGas": 0.0}
+                    else:
+                        action_to_use = self.current_actions[i]
+
+                    actions_for_this_step.append(action_to_use)
+
+                states, rewards, dones = self.step(actions_for_this_step)
+
                 all_done = all(dones)
 
                 if self.state_callback:
                     self.state_callback(states, rewards, dones)
+
+                self.current_actions = [
+                    {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
+                ]
 
                 if all_done:
                     self._log(
@@ -212,7 +256,7 @@ class SimulationController:
 
                 loop_end_time = asyncio.get_event_loop().time()
                 elapsed_time = loop_end_time - loop_start_time
-                sleep_duration = (self.dt / self.sim_speed) - elapsed_time
+                sleep_duration = max(0, (self.dt / self.sim_speed) - elapsed_time)
                 if sleep_duration > 0:
                     await asyncio.sleep(sleep_duration)
 
@@ -226,19 +270,20 @@ class SimulationController:
     def step(
         self, actions: List[Dict[str, float]]
     ) -> Tuple[List[Dict], List[float], List[bool]]:
-        """Advances the simulation by one time step for all rockets."""
+        """Advances the simulation by one time step for all rockets using the provided actions."""
         all_states: List[Dict] = []
         all_rewards: List[float] = []
         all_dones: List[bool] = []
+        actual_actions_taken_this_step: List[Dict[str, float]] = []
 
         if len(actions) != self.num_rockets:
             self._log(
                 "error",
                 f"Step received {len(actions)} actions, but expected {self.num_rockets}.",
             )
-            raise ValueError(
-                f"Action list length mismatch: expected {self.num_rockets}, got {len(actions)}"
-            )
+            actions = [
+                {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
+            ]
 
         try:
             if self.paused:
@@ -247,11 +292,17 @@ class SimulationController:
                     all_states.append(state)
                     all_rewards.append(0.0)
                     all_dones.append(self.rocket_touchdown_status[i])
+                    actual_actions_taken_this_step.append(
+                        {"throttle": 0.0, "coldGas": 0.0}
+                    )
+                self.prev_action_taken = actual_actions_taken_this_step
                 return all_states, all_rewards, all_dones
 
             for i in range(self.num_rockets):
+                current_action = actions[i]
+                actual_actions_taken_this_step.append(current_action)
+
                 if not self.rocket_touchdown_status[i]:
-                    current_action = actions[i]
                     state, reward, sim_done = self.rockets[i].step(current_action)
 
                     self.rocket_touchdown_status[i] = sim_done
@@ -278,10 +329,7 @@ class SimulationController:
                     all_rewards.append(0.0)
                     all_dones.append(True)
 
-            self.prev_action_taken = self.current_actions
-            self.current_actions = [
-                {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
-            ]
+            self.prev_action_taken = actual_actions_taken_this_step
 
             return all_states, all_rewards, all_dones
 
@@ -289,12 +337,25 @@ class SimulationController:
             self._log(
                 "exception", f"Simulation step failed for one or more rockets: {e}"
             )
-            raise
+            try:
+                current_states = self.render()
+                error_rewards = [-100.0] * self.num_rockets
+                error_dones = [True] * self.num_rockets
+                self.prev_action_taken = [
+                    {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
+                ]
+                return current_states, error_rewards, error_dones
+            except Exception as inner_e:
+                self._log(
+                    "exception",
+                    f"Failed to even get current state after step error: {inner_e}",
+                )
+                raise e
 
     def render(self) -> List[Dict]:
         """Returns the current state of all rockets (useful if not running loop)."""
         try:
-            return [rocket.rocket.get_state() for rocket in self.rockets]
+            return [rc.rocket.get_state() for rc in self.rockets]
         except Exception as e:
             self._log("exception", f"Simulation render failed: {e}")
-            raise
+            return [{"error": f"Render failed: {e}"}] * self.num_rockets
