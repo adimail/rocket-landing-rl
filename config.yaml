@@ -54,12 +54,18 @@ rocket:
     fuel_mass: [370000, 410000]            # kg (initial fuel mass)
 
 rl:
+  tip_over_angle: 10
+  max_horizontal_position: 1000
+  max_altitude: 1000
+
   rewards:
-    landing: 1000.0                        # Reward for perfect landing
-    landing_success: 100.0                 # Reward for successful landing
-    crash: -500.0                          # Penalty for crashing
-    crash_ground: -111.0                   # Penalty for hitting ground too hard/wrong angle/off target
-    out_of_bounds: -100.0                  # Penalty for going out of bounds
+    landing_perfect: 1000.0
+    landing_good: 500.0
+    landing_ok: 100.0
+    crash_ground: -300.0
+    out_of_bounds: -100.0
+    tipped_over: -200.0
+    time_penalty: -0.01
     gamma: 0.99
 
   training:
