@@ -185,6 +185,8 @@ class PhysicsEngine:
             2.0 * current_state["y"] - previous_state["y"] + current_state["ay"] * dt**2
         )
 
+        new_state["y"] = max(new_state["y"], 0)
+
         # --- Velocity Update (Central Difference Approximation) ---
         # v(t) ≈ [x(t+dt) - x(t-dt)] / (2*dt)  <- More accurate Verlet velocity
         # A simpler estimation often used: v(t+dt) ≈ [x(t+dt) - x(t)] / dt

@@ -7,6 +7,7 @@ from typing import Tuple, Dict, Any, Optional, TypeVar, cast
 from backend.rl.reward import calculate_reward
 from backend.rocket import Rocket
 from backend.simulation.config import get_rl_config
+from backend.config import Config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,37 +43,14 @@ class RocketLandingEnv(gym.Env):
         - Maximum number of steps per episode is reached.
     """
 
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
-
-    def __init__(self, render_mode: Optional[str] = None):
+    def __init__(self):
         super().__init__()
 
         logger.info("Initializing RocketLandingEnv...")
 
         try:
+            self.config = Config()
             self.rl_config = get_rl_config()
-
-            # --- Parameters from Config (with defaults) ---
-            self.landing_vel_tolerance = self.rl_config.get(
-                "landing_velocity_tolerance", 5.0
-            )
-            self.landing_angle_tolerance = self.rl_config.get(
-                "landing_angle_tolerance", 5.0
-            )  # Degrees
-            self.max_altitude = self.rl_config.get("max_altitude", 20000.0)
-            self.max_horizontal_pos = self.rl_config.get(
-                "max_horizontal_position", 50000.0
-            )  # Symmetrical bounds assumed
-            self.max_speed = self.rl_config.get(
-                "max_speed", 300.0
-            )  # Magnitude for vx, vy bounds
-            self.max_angular_velocity = self.rl_config.get(
-                "max_angular_velocity", 180.0
-            )  # Deg/s
-            self.max_angle = 180.0  # Physical limit for normalization [-180, 180]
-            self.tip_over_angle = self.rl_config.get(
-                "tip_over_angle", 90.0
-            )  # Angle beyond which it's truncated
 
             self.max_episode_steps = self.rl_config.get("max_episode_steps", 1000)
 
@@ -92,24 +70,24 @@ class RocketLandingEnv(gym.Env):
             # [x, y, vx, vy, angle, angular_vel]
             self.observation_low = np.array(
                 [
-                    -self.max_horizontal_pos,  # x min
+                    -self.config.get("rocket.position_limits.x")[0],  # x min
                     0.0,  # y min (ground level)
-                    -self.max_speed,  # vx min
-                    -self.max_speed,  # vy min
-                    -self.max_angle,  # angle min
-                    -self.max_angular_velocity,  # angular velocity min
+                    -self.config.get("rocket.velocity_limits.vx")[0],  # vx min
+                    -self.config.get("rocket.velocity_limits.vy")[0],  # vy min
+                    -self.config.get("rocket.attitude_limits.angle")[0],  # angle min
+                    -self.config.get("rocket.attitude_limits.angular_velocity")[0],
                 ],
                 dtype=np.float32,
             )
 
             self.observation_high = np.array(
                 [
-                    self.max_horizontal_pos,  # x max
-                    self.max_altitude,  # y max
-                    self.max_speed,  # vx max
-                    self.max_speed,  # vy max (can be positive if ascending)
-                    self.max_angle,  # angle max
-                    self.max_angular_velocity,  # angular velocity max
+                    self.config.get("rocket.position_limits.x")[1],  # x max
+                    self.config.get("rocket.position_limits.x")[1],  # y max
+                    self.config.get("rocket.velocity_limits.vx")[1],  # vx max
+                    self.config.get("rocket.velocity_limits.vy")[1],  # vy max
+                    self.config.get("rocket.attitude_limits.angle")[1],  # angle max
+                    self.config.get("rocket.attitude_limits.angular_velocity")[1],
                 ],
                 dtype=np.float32,
             )
@@ -120,16 +98,10 @@ class RocketLandingEnv(gym.Env):
                 dtype=np.float32,
             )
 
-            assert render_mode is None or render_mode in self.metadata["render_modes"]
-            self.render_mode = render_mode
-
             logger.info("RocketLandingEnv Initialized Successfully.")
             logger.info(f"  Action Space: {self.action_space}")
             logger.info(f"  Observation Space: {self.observation_space}")
             logger.info(f"  Max Steps: {self.max_episode_steps}")
-            logger.info(
-                f"  Landing Tolerances: Vel={self.landing_vel_tolerance} m/s, Angle={self.landing_angle_tolerance} deg"
-            )
 
         except KeyError as ke:
             logger.error(f"Initialization failed: Missing key in configuration - {ke}")
@@ -174,10 +146,9 @@ class RocketLandingEnv(gym.Env):
         """Returns auxiliary information about the state (not used for RL training)."""
         state = self.rocket.get_state()
         info = {
-            "raw_state": state,  # Contains all state variables, including mass, fuel etc.
+            "raw_state": state,
             "speed": state.get("speed", 0.0),
             "altitude": state.get("y", 0.0),
-            "fuel_mass": state.get("fuelMass", 0.0),
             "steps": self.current_step,
         }
         return info
@@ -223,25 +194,11 @@ class RocketLandingEnv(gym.Env):
         truncated = False
         reward = 0.0
 
-        # --- Action Validation and Clipping ---
-        if not self.action_space.contains(action):
-            logger.warning(
-                f"Action {action} outside bounds {self.action_space}. Clipping."
-            )
-            action_box = cast(spaces.Box, self.action_space)
-            action = np.clip(action, action_box.low, action_box.high)
-
         throttle = float(action[0])
         cold_gas_control = float(action[1])
 
         # --- Store state before action ---
         state_before = self.rocket.get_state()
-        y_before = state_before.get("y", 0.0)
-        vx_before = state_before.get("vx", 0.0)
-        vy_before = state_before.get("vy", 0.0)
-        angle_before = state_before.get("angle", 0.0)
-        ang_vel_before = state_before.get("angularVelocity", 0.0)
-        fuel_before = state_before.get("fuelMass", 0.0)
 
         # --- Step the Physics Simulation ---
         try:
@@ -259,52 +216,20 @@ class RocketLandingEnv(gym.Env):
 
         self.current_step += 1
 
-        landed_successfully = self._check_landing_success(state_after)
-        crashed = self._check_crash(state_after)
-        out_of_bounds = self._check_out_of_bounds(state_after)
-        tipped_over = self._check_tipped_over(state_after)
-        max_steps_reached = self.current_step >= self.max_episode_steps
-
-        if landed_successfully:
-            terminated = True
-            logger.debug(
-                f"Episode Terminated: Successful landing at step {self.current_step}."
-            )
-        elif crashed:
-            terminated = True
-            logger.debug(f"Episode Terminated: Crashed at step {self.current_step}.")
-        elif out_of_bounds:
-            truncated = True
-            logger.debug(
-                f"Episode Truncated: Out of bounds at step {self.current_step}."
-            )
-        elif tipped_over:
-            truncated = True
-            logger.debug(f"Episode Truncated: Tipped over at step {self.current_step}.")
-        elif max_steps_reached:
-            truncated = True
-            logger.debug(f"Episode Truncated: Max steps reached ({self.current_step}).")
-
-        state_before_minimal = {
-            "y": y_before,
-            "vx": vx_before,
-            "vy": vy_before,
-            "angle": angle_before,
-            "angularVelocity": ang_vel_before,
-            "fuelMass": fuel_before,
-        }
-        reward, _ = calculate_reward(
-            state_before_minimal,
+        reward, terminated, truncated = calculate_reward(
+            state_before,
             action,
             state_after,
         )
 
+        max_steps_reached = self.current_step >= self.max_episode_steps
+
+        if max_steps_reached:
+            truncated = True
+            logger.debug(f"Episode Truncated: Max steps reached ({self.current_step}).")
+
         observation = self._get_obs()
         info = self._get_info()
-        info["landed_successfully"] = landed_successfully
-        info["crashed"] = crashed
-        info["out_of_bounds"] = out_of_bounds
-        info["tipped_over"] = tipped_over
 
         reward = float(reward)
 
@@ -317,45 +242,9 @@ class RocketLandingEnv(gym.Env):
 
         return observation, reward, terminated, truncated, info
 
-    def _check_landing_success(self, state: Dict[str, float]) -> bool:
-        """Checks if the rocket has landed successfully within tolerances."""
-        on_ground = state.get("y", 1.0) <= 0.1  # Allow tiny tolerance below 0
-        vy_ok = abs(state.get("vy", 100.0)) <= self.landing_vel_tolerance
-        vx_ok = abs(state.get("vx", 100.0)) <= self.landing_vel_tolerance
-        angle_ok = abs(state.get("angle", 100.0)) <= self.landing_angle_tolerance
-
-        is_success = on_ground and vy_ok and vx_ok and angle_ok
-        if is_success:
-            logger.debug(
-                f"Landing Check: Success! y={state.get('y'):.2f}, vx={state.get('vx'):.2f}, vy={state.get('vy'):.2f}, ang={state.get('angle'):.2f}"
-            )
-
-        return is_success
-
-    def _check_crash(self, state: Dict[str, float]) -> bool:
-        """Checks if the rocket has hit the ground without meeting landing criteria."""
-        hit_ground = state.get("y", 1.0) <= 0.0
-        crashed = hit_ground and not self._check_landing_success(state)
-        return crashed
-
-    def _check_out_of_bounds(self, state: Dict[str, float]) -> bool:
-        """Checks if the rocket is outside the defined operational area."""
-        buffer = 100
-        out = (
-            abs(state.get("x", 0.0)) > self.max_horizontal_pos + buffer
-            or state.get("y", 0.0) > self.max_altitude + buffer
-        )
-        return out
-
-    def _check_tipped_over(self, state: Dict[str, float]) -> bool:
-        """Checks if the rocket angle exceeds the stable limit."""
-        tipped = abs(state.get("angle", 0.0)) > self.tip_over_angle
-        return tipped
-
     def render(self):
         """Renders the environment (placeholder)."""
-        if self.render_mode == "human":
-            print("Rendering not implemented yet.")
+        print("Rendering not implemented yet.")
         return None
 
     def close(self):

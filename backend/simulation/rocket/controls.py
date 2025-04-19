@@ -86,7 +86,7 @@ class RocketControls:
 
             # --- Reward Calculation ---
             # Pass the correctly formatted numpy action array
-            reward, self.touchdown = calculate_reward(
+            reward, self.touchdown, _ = calculate_reward(
                 state_before, action_np, state_after
             )
             reward = float(reward)
