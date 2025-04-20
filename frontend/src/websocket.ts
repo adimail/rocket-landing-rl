@@ -1,10 +1,11 @@
 import type { RocketState, RocketAction } from "@/types";
-import { renderStates } from "@/render";
+import { renderStates, resetPersistentRewards } from "@/render";
 
 export class RocketWebSocket {
   private socket: WebSocket;
   private readonly url: string;
   private isRunning: boolean = false;
+  private numRockets: number = 0;
 
   constructor(wsUrl: string) {
     this.url = wsUrl;
@@ -25,6 +26,9 @@ export class RocketWebSocket {
 
     socket.onclose = () => {
       console.log("[RocketWebSocket] WebSocket connection closed");
+      this.isRunning = false;
+      const startPauseBtn = document.getElementById("start-pause-btn");
+      if (startPauseBtn) startPauseBtn.textContent = "Start";
     };
 
     socket.onerror = (error: Event) => {
@@ -38,39 +42,65 @@ export class RocketWebSocket {
     try {
       const data = JSON.parse(event.data);
 
+      let states: RocketState[] | undefined = undefined;
       let actions: RocketAction[] | undefined = undefined;
+      let landing: ("unsafe" | "safe" | "ok" | "good")[] | undefined =
+        undefined;
+      let rewards: number[] | undefined = undefined;
+      let dones: boolean[] | undefined = undefined;
+
+      if (data.status) {
+        console.log("[RocketWebSocket] Status:", data.status);
+        return;
+      }
 
       if (data.step) {
-        const states: RocketState[] = data.step.state;
-        if (
-          data.step.prev_action_taken &&
-          Array.isArray(data.step.prev_action_taken)
-        ) {
+        states = data.step.state;
+        rewards = data.step.reward;
+        dones = data.step.done;
+        landing = data.landing;
+        if (data.step.prev_action_taken) {
           actions = data.step.prev_action_taken as RocketAction[];
         }
-        const landingMessages:
-          | ("unsafe" | "safe" | "ok" | "good")[]
-          | undefined = data.landing;
-        renderStates(states, actions, landingMessages);
       } else if (data.state) {
-        const states: RocketState[] = data.state;
-        if (data.action && Array.isArray(data.action)) {
-          actions = data.action as RocketAction[];
+        states = data.state;
+        actions = data.action;
+        landing = data.landing;
+        rewards = data.reward;
+        dones = data.done;
+      }
+
+      if (states) {
+        if (states.length !== this.numRockets) {
+          this.numRockets = states.length;
+          console.log(
+            "[RocketWebSocket] Detected",
+            this.numRockets,
+            "rockets.",
+          );
+          resetPersistentRewards(this.numRockets);
         }
-        renderStates(states, actions, data.landing);
+        renderStates(states, actions, landing, rewards, dones);
       }
 
       if (data.initial) {
         console.log("[RocketWebSocket] Received initial state.");
-        if (!actions && data.state) {
-          renderStates(data.state, undefined, data.landing);
+        if (states) {
+          resetPersistentRewards(states.length);
+          renderStates(states, actions, landing, rewards, dones);
         }
       }
       if (data.restart) {
-        console.log("[RocketWebSocket] Simulation restarted.");
+        console.log("[RocketWebSocket] Simulation restarted by server.");
+        resetPersistentRewards(this.numRockets);
       }
     } catch (err) {
-      console.error("[RocketWebSocket] Failed to parse message:", err);
+      console.error(
+        "[RocketWebSocket] Failed to parse or handle message:",
+        err,
+        "Data:",
+        event.data,
+      );
     }
   }
 
@@ -81,8 +111,11 @@ export class RocketWebSocket {
       "speed-slider",
     ) as HTMLInputElement;
     const speedValue = document.getElementById("speed-value");
+    const agentToggleBtn = document.getElementById("toggle-agent-btn");
 
-    if (!startPauseBtn || !restartBtn || !speedSlider || !speedValue) return;
+    if (!startPauseBtn || !restartBtn || !speedSlider || !speedValue) {
+      console.warn("One or more UI control elements not found.");
+    }
 
     try {
       const res = await fetch("/api/speed");
@@ -90,43 +123,71 @@ export class RocketWebSocket {
       const data = await res.json();
       const speed = parseFloat(data.speed);
 
-      speedSlider.value = speed.toString();
-      speedValue.textContent = `${speed.toFixed(1)}x`;
+      if (speedSlider && speedValue) {
+        speedSlider.value = speed.toString();
+        speedValue.textContent = `${speed.toFixed(1)}x`;
+      }
     } catch (err) {
       console.error("[RocketWebSocket] Failed to fetch initial speed:", err);
     }
 
-    startPauseBtn.addEventListener("click", () => {
-      this.isRunning = !this.isRunning;
-      const command = this.isRunning ? "start" : "pause";
-      startPauseBtn.textContent = this.isRunning ? "Pause" : "Start";
-      this.sendCommand(command);
-    });
+    if (startPauseBtn) {
+      startPauseBtn.addEventListener("click", () => {
+        this.isRunning = !this.isRunning;
+        const command = this.isRunning ? "start" : "pause";
+        startPauseBtn.textContent = this.isRunning ? "Pause" : "Start";
+        this.sendCommand(command);
+      });
+    }
 
-    restartBtn.addEventListener("click", () => {
-      this.isRunning = false;
-      startPauseBtn.textContent = "Start";
-      this.sendCommand("restart");
-    });
+    if (restartBtn) {
+      restartBtn.addEventListener("click", () => {
+        this.isRunning = false;
+        if (startPauseBtn) startPauseBtn.textContent = "Start";
+        this.sendCommand("restart");
+        resetPersistentRewards(this.numRockets);
+      });
+    }
 
-    speedSlider.addEventListener("input", () => {
-      const speed = parseFloat(speedSlider.value);
-      speedValue.textContent = `${speed.toFixed(1)}x`;
-      this.sendSpeed(speed);
-    });
+    if (speedSlider && speedValue) {
+      speedSlider.addEventListener("input", () => {
+        const speed = parseFloat(speedSlider.value);
+        speedValue.textContent = `${speed.toFixed(1)}x`;
+        this.sendSpeed(speed);
+      });
+    }
+
+    if (agentToggleBtn) {
+      agentToggleBtn.addEventListener("click", () => {
+        console.log("[RocketWebSocket] Toggling agent control...");
+        this.sendCommand("toggle_agent");
+      });
+    } else {
+      console.warn("Agent toggle button not found (ID: toggle-agent-btn)");
+    }
   }
 
-  private sendCommand(command: "start" | "pause" | "restart") {
+  private sendCommand(command: "start" | "pause" | "restart" | "toggle_agent") {
     try {
-      this.socket.send(JSON.stringify({ command }));
+      if (this.socket.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({ command }));
+      } else {
+        console.warn(
+          `[RocketWebSocket] Cannot send command '${command}', socket not open.`,
+        );
+      }
     } catch (err) {
-      console.error("[RocketWebSocket] Failed to send command:", err);
+      console.error("[RocketWebSocket] Failed to send command:", command, err);
     }
   }
 
   private sendSpeed(speed: number): void {
     try {
-      this.socket.send(JSON.stringify({ speed }));
+      if (this.socket.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({ speed }));
+      } else {
+        console.warn(`[RocketWebSocket] Cannot send speed, socket not open.`);
+      }
     } catch (err) {
       console.error("[RocketWebSocket] Failed to send speed:", err);
     }
@@ -145,7 +206,6 @@ export class RocketWebSocket {
       const payload = {
         action: { throttle, coldGas },
         rocket_index: rocketIndex,
-        user: true,
       };
 
       this.socket.send(JSON.stringify(payload));

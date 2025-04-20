@@ -1,5 +1,5 @@
 import numpy as np
-from backend.simulation.physics import PhysicsEngine
+from backend.physics import PhysicsEngine
 from backend.config import Config
 
 from backend.simulation.config import (

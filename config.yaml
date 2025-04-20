@@ -116,4 +116,4 @@ rl:
         target_policy_noise: 0.2
         noise_clip: 0.5
         train_freq: 1
-        learning_starts: 10000
+        learning_starts: 1000

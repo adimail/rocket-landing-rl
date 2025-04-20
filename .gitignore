@@ -4,7 +4,8 @@ __pycache__/
 *.ipynb
 profile_default/
 ipython_config.py
-*.log
+logs
+models
 .env
 .venv
 venv

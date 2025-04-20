@@ -1,4 +1,4 @@
-from backend.envs.lander import RocketLandingEnv
+from backend.envs import RocketLandingEnv
 
 if __name__ == "__main__":
     print("\n" + "=" * 30 + "\nTesting RocketLandingEnv...\n" + "=" * 30)
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         print(f"Episode finished after {steps} steps.")
         final_state = info.get("raw_state", {})
         print(
-            f"Final State (Selected): y={final_state.get('y'):.2f}, vx={final_state.get('vx'):.2f}, vy={final_state.get('vy'):.2f}, ang={final_state.get('angle'):.2f}"
+            f"Final State (Selected): x={final_state.get('x'):.2f}, y={final_state.get('y'):.2f}, vx={final_state.get('vx'):.2f}, vy={final_state.get('vy'):.2f}, ang={final_state.get('angle'):.2f}"
         )
         print(f"Total Reward: {total_reward:.3f}")
         print(f"Terminated: {terminated}, Truncated: {truncated}")

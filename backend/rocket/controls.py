@@ -1,6 +1,8 @@
-from backend.utils import compute_reward
+from backend.rl import calculate_reward
 from backend.rocket import Rocket
 from backend.config import Config
+import numpy as np
+from typing import Tuple, Dict, Any, Union, List
 
 
 class RocketControls:
@@ -9,44 +11,30 @@ class RocketControls:
             self.config = Config()
             self.dt = self.config.get("simulation.time_step")
             if not isinstance(self.dt, (int, float)) or self.dt <= 0:
-                print(f"Warning: Invalid simulation.time_step '{self.dt}', using default 0.1")
+                print(
+                    f"Warning: Invalid simulation.time_step '{self.dt}', using default 0.1"
+                )
                 self.dt = 0.1
 
             self.rocket = Rocket()
             self.touchdown = False
             self.steps = 0
 
-            self.max_steps = self.config.get("simulation.max_steps")
-            if not isinstance(self.max_steps, int) or self.max_steps <= 0:
-                print(
-                    f"Warning: Invalid simulation.max_steps '{self.max_steps}', using default 1000"
-                )
-                self.max_steps = 1000
-
-            self.coef_vx_penalty = 0.15  # Penalty for horizontal velocity
-            self.coef_vy_penalty_base = 0.1  # Base penalty for vertical velocity
-            self.coef_angle_penalty = 0.1  # Penalty for deviation from vertical
-            self.vy_penalty_scale_factor = (
-                10.0  # How much the vy penalty increases near ground
-            )
-            self.vy_penalty_characteristic_height = (
-                300.0  # Altitude (m) at which scaling effect is significant
-            )
-            self.altitude_factor_scale = 100.0  # Denominator scale for altitude reward
-
         except Exception as err:
             print(f"FATAL Error initializing RocketControls: {err}")
             raise
 
-    def step(self, action):
+    def step(
+        self,
+        action: Union[Dict[str, float], List[float], Tuple[float, float], np.ndarray],
+    ) -> Tuple[Dict[str, Any], float, bool]:
         """
         Advances the simulation by one time step.
 
         Args:
-            action: Dictionary containing:
-              - throttle (float [0.0, 1.0]): Main engine throttle.
-              - coldGas (float [-1.0, 1.0]): Cold gas thruster control.
-              Or a tuple (throttle, cold_gas_control).
+            action: The action taken by the agent. Expected formats:
+              - Dictionary: {'throttle': float [0.0, 1.0], 'coldGas': float [-1.0, 1.0]}
+              - List/Tuple/np.ndarray: [throttle, cold_gas_control]
 
         Returns:
             tuple: (state, reward, done)
@@ -59,61 +47,72 @@ class RocketControls:
         """
         try:
             if self.touchdown:
-                print("Warning: step() called after touchdown. Returning last state.")
+                # print("Warning: step() called after touchdown. Returning last state.") # Avoid spamming logs
                 return (
                     self.rocket.get_state(),
-                    0.0,
+                    0.0,  # No reward after termination
                     True,
                 )
 
             self.steps += 1
 
-            if self.steps >= self.max_steps:
-                self.touchdown = True
-                timeout_penalty = -100.0
-                print(
-                    f"Max steps ({self.max_steps}) reached. Applying timeout penalty."
-                )
-                return self.rocket.get_state(), timeout_penalty, True
-
+            # --- Action Parsing and Clipping ---
             throttle = 0.0
             cold_gas_control = 0.0
+
             if isinstance(action, dict):
                 throttle = float(action.get("throttle", 0.0))
                 cold_gas_control = float(action.get("coldGas", 0.0))
-            elif isinstance(action, (list, tuple)) and len(action) == 2:
-                throttle = float(action[0])
-                cold_gas_control = float(action[1])
-            else:
-                print(
-                    f"Warning: Invalid action format received: {action}. Using zero action."
-                )
+            elif isinstance(action, (list, tuple, np.ndarray)):
+                if len(action) >= 2:
+                    throttle = float(action[0])
+                    cold_gas_control = float(action[1])
+                else:
+                    pass
 
-            throttle = max(0.0, min(1.0, throttle))
-            cold_gas_control = max(-1.0, min(1.0, cold_gas_control))
+            throttle = np.clip(throttle, 0.0, 1.0)
+            cold_gas_control = np.clip(cold_gas_control, -1.0, 1.0)
 
+            action_np = np.array([throttle, cold_gas_control], dtype=np.float32)
+
+            # --- Simulation Step ---
             state_before = self.rocket.get_state()
             self.rocket.apply_action(throttle, cold_gas_control)
             state_after = self.rocket.get_state()
 
             if "error" in state_after:
                 print(f"Error retrieving state_after: {state_after['error']}")
-                return state_after, -500.0, True
+                return state_after, -500.0, True  # Terminate on simulation error
 
-            reward, self.touchdown = compute_reward(state_before, action, state_after)
+            # --- Reward Calculation ---
+            # Pass the correctly formatted numpy action array
+            reward, self.touchdown, _ = calculate_reward(
+                state_before, action_np, state_after
+            )
             reward = float(reward)
 
-            return state_after, reward, self.touchdown
+            # --- Check for Truncation (handled by environment, but RocketControls can signal done) ---
+            # The environment's step method will ultimately decide termination/truncation
+            # based on state_after and max_steps. RocketControls just needs to signal
+            # if it thinks it's done (landed/crashed).
+            # The `self.touchdown` flag from calculate_reward is sufficient for this.
+
+            return (
+                state_after,
+                reward,
+                self.touchdown,
+            )  # Return self.touchdown as the 'done' flag
 
         except Exception as err:
             print(f"FATAL Error during simulation step {self.steps}: {err}")
+            # Return a terminal state and penalty on fatal error
             return (
                 self.rocket.get_state(),
-                -500.0,
-                True,
+                -500.0,  # Severe penalty for crashing due to error
+                True,  # Indicate episode is done
             )
 
-    def reset(self):
+    def reset(self) -> Dict[str, Any]:
         """
         Resets the rocket simulation to its initial state.
 

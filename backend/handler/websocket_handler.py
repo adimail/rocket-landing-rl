@@ -1,11 +1,13 @@
+import os
 from tornado.ioloop import IOLoop
 from backend.config import Config
 import tornado.websocket
 import json
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 from backend.simulation import SimulationController
 from backend.utils import evaluate_landing
+from backend.rl.agent import RLAgent
 
 
 class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -13,7 +15,29 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         self.logger = logger
         self.config = Config()
         num_rockets = self.config.get("environment.num_rockets") or 1
-        self.sim = SimulationController(num_rockets=num_rockets)
+
+        rl_agent_instance: Optional[RLAgent] = None
+        try:
+            # TODO: Make these paths configurable or find the latest best model
+            # Using relative paths from project root might be safer
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            model_path = os.path.join(base_dir, "assets", "best_model.zip")
+            stats_path = os.path.join(base_dir, "assets", "vecnormalize.pkl")
+
+            if os.path.exists(model_path) and os.path.exists(stats_path):
+                rl_agent_instance = RLAgent(
+                    model_path=model_path, vec_normalize_path=stats_path
+                )
+                self.logger.info("RL Agent loaded successfully.")
+            else:
+                self.logger.warning(
+                    f"RL Agent model ({model_path}) or stats ({stats_path}) not found. Agent control disabled."
+                )
+        except Exception as e:
+            self.logger.error(f"Failed to initialize RL Agent: {e}", exc_info=True)
+
+        self.sim = SimulationController(num_rockets, rl_agent=rl_agent_instance)
+
         self.client_connected = False
         self.io_loop = IOLoop.current()
 
@@ -47,8 +71,22 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
             data = json.loads(message)
 
             if "command" in data:
-                self.handle_command(data["command"])
-                return
+                command = data["command"]
+                if command == "toggle_agent":
+                    if self.sim.rl_agent:
+                        self.sim.agent_enabled = not self.sim.agent_enabled
+                        status = "enabled" if self.sim.agent_enabled else "disabled"
+                        self.logger.info(f"RL Agent control {status} by user.")
+                        self.send_json({"status": f"Agent {status}"})
+                    else:
+                        self.logger.warning(
+                            "Cannot toggle agent: Agent not loaded into SimulationController."
+                        )
+                        self.send_json({"status": "Agent not available"})
+                    return
+                else:
+                    self.handle_command(command)
+                    return
 
             if "speed" in data:
                 speed = float(data["speed"])
@@ -59,21 +97,20 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 rocket_index = int(data["rocket_index"])
                 action_data = data["action"]
 
-                if not isinstance(action_data, dict):
+                if isinstance(action_data, dict):
+                    try:
+                        action_dict: Dict[str, float] = {
+                            "throttle": float(action_data.get("throttle", 0.0)),
+                            "coldGas": float(action_data.get("coldGas", 0.0)),
+                        }
+                        self.sim.set_action(action_dict, rocket_index)
+                    except (ValueError, TypeError, KeyError) as inner_e:
+                        self.logger.error(
+                            f"Parsing user action failed: {inner_e} - Data: {action_data}"
+                        )
+                else:
                     self.logger.error(
-                        f"Received action is not a dictionary: {action_data}"
-                    )
-                    return
-
-                try:
-                    action_dict: Dict[str, float] = {
-                        "throttle": float(action_data.get("throttle", 0.0)),
-                        "coldGas": float(action_data.get("coldGas", 0.0)),
-                    }
-                    self.sim.set_action(action_dict, rocket_index)
-                except (ValueError, TypeError, KeyError) as inner_e:
-                    self.logger.error(
-                        f"Parsing single action failed: {inner_e} - Data: {action_data}"
+                        f"Received user action is not a dictionary: {action_data}"
                     )
                 return
 
