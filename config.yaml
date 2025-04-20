@@ -5,12 +5,12 @@ simulation:
   time_step: 0.1                           # s
   max_steps: 10000                         # Max steps per episode before truncation
   speed: 1                                 # Speed of simulation (for visualization, not RL training)
-  loop: true
+  loop: false
 
 environment:
   gravity: -9.81                           # m/s²
   air_density: 1.225                       # kg/m³
-  num_rockets: 1
+  num_rockets: 30
 
 landing:
   thresholds:

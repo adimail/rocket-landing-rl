@@ -10,7 +10,7 @@ from multiprocessing import freeze_support
 from backend.envs import RocketLandingEnv
 from backend.config import Config
 
-LOG_DIR = "logs/train"
+LOG_DIR = "models/logs/train"
 MODEL_DIR = "models"
 TENSORBOARD_LOG_NAME = "PPO_RocketLander"
 MODEL_NAME_PREFIX = "ppo_rocket"
