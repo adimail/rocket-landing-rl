@@ -2,7 +2,7 @@ import type { RocketState } from "../types";
 
 export function renderStateText(
   states: RocketState[],
-  rewards: number[] | null,
+  rewards: (number | null)[],
 ): void {
   try {
     updateRocketStateDetails(states, rewards);
@@ -13,7 +13,7 @@ export function renderStateText(
 
 function updateRocketStateDetails(
   states: RocketState[],
-  rewards: number[] | null,
+  rewards: (number | null)[],
 ): void {
   const detailsContainer = document.getElementById("rocketstatedetails");
   if (!detailsContainer) return;
@@ -26,7 +26,7 @@ function updateRocketStateDetails(
   states.forEach((state, index) => {
     const reward = rewards?.[index];
     const rewardDisplay =
-      reward !== undefined ? ` | reward: ${format(reward)}` : "";
+      reward !== undefined ? ` | reward: ${format(reward ?? 0)}` : "";
 
     htmlContent += `
       <div style="margin-bottom: 12px; border: 1px solid #ccc; padding: 12px; border-radius: 6px;">

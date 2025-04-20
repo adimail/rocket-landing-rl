@@ -13,8 +13,10 @@ let currentActions: RocketAction[] | null = null;
 let explosionFrameCounters: number[] = [];
 let explosionStartTimes: number[] = [];
 let areCrashed: boolean[] = [];
+let hasTerminated: boolean[] = [];
 let animationFrameId: number | null = null;
-let rewards: number[] | null = null;
+let currentStepRewards: number[] | null = null;
+let persistentRewards: (number | null)[] = [];
 
 const defaultAction: RocketAction = { throttle: 0, coldGas: 0 };
 
@@ -38,7 +40,7 @@ function animationLoop(timestamp: number): void {
 
   const { canvas, ctx } = setup;
   renderBackground(ctx, canvas.width, canvas.height);
-  renderStateText(currentStates, rewards);
+  renderStateText(currentStates, persistentRewards);
 
   const canvasBottom = canvas.height - Constants.GROUND_OFFSET;
   const canvasCenterX = canvas.width / 2;
@@ -65,7 +67,9 @@ function animationLoop(timestamp: number): void {
         );
       }
     } else {
-      renderRocket(ctx, canvas.width, canvas.height, state, action);
+      if (!areCrashed[index]) {
+        renderRocket(ctx, canvas.width, canvas.height, state, action);
+      }
     }
   });
 
@@ -76,57 +80,83 @@ export function renderStates(
   states: RocketState[],
   actions?: RocketAction[],
   landingMessages?: ("unsafe" | "safe" | "ok" | "good")[],
-  newRewards?: number[],
+  newStepRewards?: number[],
+  dones?: boolean[],
 ): void {
   try {
     currentStates = states;
     currentActions = actions ?? null;
-    rewards = newRewards ?? null;
+    currentStepRewards = newStepRewards ?? null;
 
-    if (states.length !== areCrashed.length) {
+    if (states.length !== persistentRewards.length) {
       explosionFrameCounters = new Array(states.length).fill(0);
       explosionStartTimes = new Array(states.length).fill(0);
       areCrashed = new Array(states.length).fill(false);
+      hasTerminated = new Array(states.length).fill(false);
+      persistentRewards = new Array(states.length).fill(null);
+      console.log("Resized render state arrays for", states.length, "rockets");
     }
 
-    if (landingMessages) {
-      landingMessages.forEach((landing, index) => {
+    states.forEach((state, index) => {
+      const isNowDone = dones ? dones[index] : false;
+      const currentReward = currentStepRewards
+        ? currentStepRewards[index]
+        : null;
+
+      if (!hasTerminated[index]) {
+        persistentRewards[index] = currentReward;
+      }
+
+      let justCrashed = false;
+      if (landingMessages) {
+        const landing = landingMessages[index];
         if (landing === "unsafe" && !areCrashed[index]) {
           areCrashed[index] = true;
+          justCrashed = true;
           explosionFrameCounters[index] = 0;
           explosionStartTimes[index] = performance.now();
-        } else if (landing === "safe") {
-          areCrashed[index] = false;
-        } else if (landing === "good") {
-          areCrashed[index] = false;
-        } else if (landing === "ok") {
+        } else if (
+          landing === "safe" ||
+          landing === "good" ||
+          landing === "ok"
+        ) {
           areCrashed[index] = false;
         }
-      });
-    } else {
-      states.forEach((state, index) => {
-        if (!areCrashed[index]) {
-          const hasCrashed =
-            state.y <= 0 &&
-            (state.speed > Constants.SPEED_THRESHOLD ||
-              Math.abs(state.relativeAngle) > Constants.ANGLE_THRESHOLD);
+        if (!hasTerminated[index]) {
+          hasTerminated[index] = true;
+        }
+      } else if (isNowDone && !hasTerminated[index]) {
+        const looksLikeCrash =
+          state.y <= 0.1 &&
+          (state.speed > Constants.SPEED_THRESHOLD ||
+            Math.abs(state.relativeAngle) > Constants.ANGLE_THRESHOLD);
+        if (looksLikeCrash && !areCrashed[index]) {
+          areCrashed[index] = true;
+          justCrashed = true;
+          explosionFrameCounters[index] = 0;
+          explosionStartTimes[index] = performance.now();
+        }
+        hasTerminated[index] = true;
+      }
 
-          if (hasCrashed) {
-            areCrashed[index] = true;
-            explosionFrameCounters[index] = 0;
-            explosionStartTimes[index] = performance.now();
-          }
+      if (state.y > 10.0) {
+        if (areCrashed[index]) areCrashed[index] = false;
+        if (hasTerminated[index]) {
+          hasTerminated[index] = false;
+          persistentRewards[index] = null;
         }
-        if (areCrashed[index] && state.y > 0) {
-          areCrashed[index] = false;
-        }
-      });
-    }
+      }
+    });
 
     if (animationFrameId === null) {
       animationFrameId = requestAnimationFrame(animationLoop);
     }
   } catch (error) {
-    console.error("[renderStates] Error starting render:", error);
+    console.error("[renderStates] Error updating render state:", error);
   }
+}
+
+export function resetPersistentRewards(numRockets: number): void {
+  console.log("Resetting persistent rewards for", numRockets, "rockets");
+  persistentRewards = new Array(numRockets).fill(null);
 }
