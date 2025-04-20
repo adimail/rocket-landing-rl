@@ -29,7 +29,7 @@ ppo_config = config_loader.get("rl.training.algorithm.PPO")
 try:
     GAMMA = ppo_config.get("gamma", 0.99)
     LEARNING_RATE = ppo_config.get("learning_rate", 0.0003)
-    BATCH_SIZE = ppo_config.get("batch_size", 64)
+    BATCH_SIZE = ppo_config.get("batch_size", 256)
     N_STEPS = ppo_config.get("n_steps", 2048)
     ENT_COEF = ppo_config.get("ent_coef", 0.01)
     N_EPOCHS = ppo_config.get("n_epochs", 10)
@@ -40,7 +40,7 @@ except KeyError:
     print("Warning: Could not load PPO config from yaml, using defaults.")
     GAMMA = 0.99
     LEARNING_RATE = 0.0003
-    BATCH_SIZE = 64
+    BATCH_SIZE = 256
     N_STEPS = 2048
     ENT_COEF = 0.01
     N_EPOCHS = 10
@@ -107,13 +107,15 @@ if __name__ == "__main__":
         best_model_save_path=best_model_save_path,
         log_path=run_log_dir,
         eval_freq=EVAL_FREQ,
-        n_eval_episodes=10,
+        n_eval_episodes=30,
         deterministic=True,
         render=False,
         verbose=1,
     )
 
     # --- Model Definition ---
+    policy_kwargs = dict(net_arch=[128, 128])
+
     model = PPO(
         "MlpPolicy",
         norm_train_vec_env,
@@ -126,6 +128,7 @@ if __name__ == "__main__":
         clip_range=CLIP_RANGE,
         ent_coef=ENT_COEF,
         max_grad_norm=MAX_GRAD_NORM,
+        policy_kwargs=policy_kwargs,
         verbose=1,
         tensorboard_log=LOG_DIR,
     )
@@ -173,7 +176,7 @@ if __name__ == "__main__":
         print("Model and normalization stats loaded successfully.")
 
         total_reward_sum = 0
-        num_episodes = 5
+        num_episodes = 10
         for episode in range(num_episodes):
             obs = eval_norm_env.reset()
             terminated = False

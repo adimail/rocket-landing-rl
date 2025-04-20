@@ -10,7 +10,7 @@ simulation:
 environment:
   gravity: -9.81                           # m/s²
   air_density: 1.225                       # kg/m³
-  num_rockets: 1
+  num_rockets: 30
 
 landing:
   thresholds:
@@ -85,7 +85,7 @@ rl:
     algorithm:
       PPO:
         learning_rate: 0.0003
-        batch_size: 64
+        batch_size: 256
         n_steps: 2048
         gamma: 0.99
         ent_coef: 0.01
