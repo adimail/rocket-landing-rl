@@ -1,4 +1,4 @@
-from backend.rl.reward import calculate_reward
+from backend.rl import calculate_reward
 from backend.rocket import Rocket
 from backend.config import Config
 import numpy as np

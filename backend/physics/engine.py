@@ -1,5 +1,5 @@
 import numpy as np
-from backend.simulation.config import get_physics_config, get_environment_config
+from backend.simulation import get_physics_config, get_environment_config
 
 env_config = get_environment_config()
 physics_config = get_physics_config()

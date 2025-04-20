@@ -1,4 +1,4 @@
-from backend.envs.lander import RocketLandingEnv
+from backend.envs import RocketLandingEnv
 
 if __name__ == "__main__":
     print("\n" + "=" * 30 + "\nTesting RocketLandingEnv...\n" + "=" * 30)

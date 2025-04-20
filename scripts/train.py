@@ -7,7 +7,7 @@ from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 
 from multiprocessing import freeze_support
 
-from backend.envs.lander import RocketLandingEnv
+from backend.envs import RocketLandingEnv
 from backend.config import Config
 
 LOG_DIR = "logs/train"
