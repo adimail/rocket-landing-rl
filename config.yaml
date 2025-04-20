@@ -3,18 +3,18 @@ app:
 
 simulation:
   time_step: 0.1                           # s
-  max_steps: 1000                          # Max steps per episode before truncation
+  max_steps: 10000                         # Max steps per episode before truncation
   speed: 1                                 # Speed of simulation (for visualization, not RL training)
   loop: false
 
 environment:
   gravity: -9.81                           # m/s²
   air_density: 1.225                       # kg/m³
-  num_rockets: 2
+  num_rockets: 1
 
 landing:
   thresholds:
-    safe:
+    perfect:
       speed_vx: 30.0                       # m/s
       speed_vy: 30.0                       # m/s
       angle: 5.0                           # degrees
@@ -28,7 +28,7 @@ landing:
       angle: 10.0                          # degrees
 
 rocket:
-  thrust_power: 15000000                   # N
+  thrust_power: 10000000                    # N
   cold_gas_thrust_power: 70000             # N
   fuel_consumption_rate: 1700              # kg / (s * throttle)
   radius: 1.85                             # m
@@ -54,24 +54,27 @@ rocket:
     fuel_mass: [370000, 410000]            # kg (initial fuel mass)
 
 rl:
+  tip_over_angle: 90
+  max_horizontal_position: 50000
+  max_altitude: 50000
+
   rewards:
-    landing: 1000.0                        # Reward for perfect landing
-    landing_success: 100.0                 # Reward for successful landing
-    crash: -500.0                          # Penalty for crashing
-    crash_ground: -100.0                   # Penalty for hitting ground too hard/wrong angle/off target
-    crash_tipped_over: -100.0              # Penalty for tipping over mid-air
-    out_of_bounds: -100.0                  # Penalty for going out of bounds
-    crash_out_of_bounds: -100.0            # Duplicate of out_of_bounds - consolidated
-
-    time_penalty: -0.01                    # Small penalty per step for efficiency
-
-    distance_weight: 0.001                 # Weight for distance-based potential
-    angle_alignment_weight: 0.005          # Weight for angle-based potential
-    velocity_alignment_weight: 0.002       # Weight for velocity-based potential
-    stability: 0.2                         # Weight for maintaining stability
-
-    throttle_penalty_factor: 0.0           # Penalty for using main engine
-    rcs_penalty_factor: 0.0                # Penalty for using cold gas thrusters
+    landing_perfect: 4000.0
+    landing_good: 3000.0
+    landing_ok: 2000.0
+    crash_ground: -800.0
+    out_of_bounds: -300.0
+    tipped_over: -300.0
+    throttle_descent_reward_scale: 0.3
+    cold_gas_reward_scale: 0.7
+    free_fall_penalty_scale: 0.2
+    angle_aware_throttle_scale: 0.3
+    horizontal_correction_scale: 0.2
+    throttle_penalty_factor: 0.0
+    rcs_penalty_factor: 0.0
+    correct_direction_bonus: 1.5
+    time_penalty: -0.01
+    gamma: 0.99
 
   training:
     total_timesteps: 1000000
