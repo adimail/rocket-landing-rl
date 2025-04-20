@@ -10,7 +10,7 @@ simulation:
 environment:
   gravity: -9.81                           # m/s²
   air_density: 1.225                       # kg/m³
-  num_rockets: 30
+  num_rockets: 1
 
 landing:
   thresholds:
@@ -116,4 +116,4 @@ rl:
         target_policy_noise: 0.2
         noise_clip: 0.5
         train_freq: 1
-        learning_starts: 10000
+        learning_starts: 1000
