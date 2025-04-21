@@ -14,32 +14,43 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
     def initialize(self, logger):
         self.logger = logger
         self.config = Config()
-        num_rockets = self.config.get("environment.num_rockets") or 1
+        self.num_rockets = self.config.get("environment.num_rockets") or 1
 
-        rl_agent_instance: Optional[RLAgent] = None
-        try:
-            # TODO: Make these paths configurable or find the latest best model
-            # Using relative paths from project root might be safer
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            model_path = os.path.join(base_dir, "assets", "best_model.zip")
-            stats_path = os.path.join(base_dir, "assets", "vecnormalize.pkl")
+        self.model_version = self.config.get("model.version")
+        self.rl_agent_instance: Optional[RLAgent] = None
 
-            if os.path.exists(model_path) and os.path.exists(stats_path):
-                rl_agent_instance = RLAgent(
-                    model_path=model_path, vec_normalize_path=stats_path
-                )
-                self.logger.info("RL Agent loaded successfully.")
-            else:
-                self.logger.warning(
-                    f"RL Agent model ({model_path}) or stats ({stats_path}) not found. Agent control disabled."
-                )
-        except Exception as e:
-            self.logger.error(f"Failed to initialize RL Agent: {e}", exc_info=True)
+        self._get_model()
 
-        self.sim = SimulationController(num_rockets, rl_agent=rl_agent_instance)
+        self.sim = SimulationController(
+            self.num_rockets, rl_agent=self.rl_agent_instance
+        )
 
         self.client_connected = False
         self.io_loop = IOLoop.current()
+
+    def _get_model(self):
+        if self.model_version:
+            try:
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                model_path = os.path.join(
+                    base_dir, "assets", "model", self.model_version, "best_model.zip"
+                )
+                stats_path = os.path.join(
+                    base_dir, "assets", "model", self.model_version, "vecnormalize.pkl"
+                )
+                if os.path.exists(model_path) and os.path.exists(stats_path):
+                    self.rl_agent_instance = RLAgent(
+                        model_path=model_path, vec_normalize_path=stats_path
+                    )
+                    self.logger.info(
+                        f"RL Agent (version {self.model_version}) loaded successfully."
+                    )
+                else:
+                    self.logger.warning(
+                        f"RL Agent model ({model_path}) or stats ({stats_path}) not found. Agent control disabled."
+                    )
+            except Exception as e:
+                self.logger.error(f"Failed to initialize RL Agent: {e}", exc_info=True)
 
     def open(self):
         self.logger.info("WebSocket opened")

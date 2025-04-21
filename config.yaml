@@ -7,6 +7,9 @@ simulation:
   speed: 1                                 # Speed of simulation (for visualization, not RL training)
   loop: false
 
+model:
+  version: v1
+
 environment:
   gravity: -9.81                           # m/s²
   air_density: 1.225                       # kg/m³

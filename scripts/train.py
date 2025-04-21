@@ -161,7 +161,7 @@ if __name__ == "__main__":
     print("\n--- Evaluating Best Model ---")
 
     best_model_zip = os.path.join(best_model_save_path, "best_model.zip")
-    best_model_norm_stats = os.path.join(best_model_save_path, "vecnormalize.pkl")
+    best_model_norm_stats = os.path.join(run_model_dir, "vecnormalize.pkl")
 
     if os.path.exists(best_model_zip) and os.path.exists(best_model_norm_stats):
         print(f"Loading best model from: {best_model_zip}")
@@ -183,7 +183,10 @@ if __name__ == "__main__":
             episode_reward = 0
             step = 0
             while not terminated:
-                action, _ = loaded_model.predict(obs, deterministic=True)
+                if isinstance(obs, tuple):
+                    action, _ = loaded_model.predict(obs[0], deterministic=True)
+                else:
+                    action, _ = loaded_model.predict(obs, deterministic=True)
                 obs, reward, terminated, info = eval_norm_env.step(action)
                 episode_reward += reward[0]
                 step += 1
