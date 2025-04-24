@@ -20,9 +20,9 @@ class SimulationController:
     def __init__(
         self,
         num_rockets=2,
-        log_state=False,
-        log_action=False,
-        log_reward=False,
+        log_state=True,
+        log_action=True,
+        log_reward=True,
         rl_agent: Optional[RLAgent] = None,
     ):
         try:
