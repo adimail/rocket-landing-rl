@@ -25,13 +25,15 @@ class RocketLandingEnv(gym.Env):
         - action[0]: Main Engine Throttle (0.0 to 1.0) - Normalized
         - action[1]: Cold Gas Thruster Control (-1.0 to 1.0) - Normalized torque request
 
-    **Observation Space:** Continuous Box(6)
+    **Observation Space:** Continuous Box(8)
         - obs[0]: x position (m) - Horizontal distance from landing pad center.
         - obs[1]: y position (altitude) (m) - Height above the landing pad.
-        - obs[2]: x velocity (m/s) - Horizontal velocity.
-        - obs[3]: y velocity (m/s) - Vertical velocity (negative is downward).
-        - obs[4]: angle (degrees) - Angle from vertical (0 = upright, positive = tilted right). Normalized to [-180, 180].
-        - obs[5]: angular velocity (deg/s) - Rate of change of the angle.
+        - obs[2]: vx velocity (m/s) - Horizontal velocity.
+        - obs[3]: vy velocity (m/s) - Vertical velocity (negative is downward).
+        - obs[4]: ax acceleration (m/s^2) - Horizontal acceleration.
+        - obs[5]: ay acceleration (m/s^2) - Vertical acceleration (negative is downward).
+        - obs[6]: angle (degrees) - Angle from vertical (0 = upright, positive = tilted right). Normalized to [-180, 180].
+        - obs[7]: angular velocity (deg/s) - Rate of change of the angle.
 
     **Termination:**
         - Rocket crashes (lands too hard, too fast horizontally, or at too large an angle).
@@ -67,13 +69,15 @@ class RocketLandingEnv(gym.Env):
             )
 
             # --- Observation Space ---
-            # [x, y, vx, vy, angle, angular_vel]
+            # [x, y, vx, vy, ax, ay, angle, angular_velocity]
             self.observation_low = np.array(
                 [
                     -self.config.get("rocket.position_limits.x")[0],  # x min
                     0.0,  # y min (ground level)
                     -self.config.get("rocket.velocity_limits.vx")[0],  # vx min
                     -self.config.get("rocket.velocity_limits.vy")[0],  # vy min
+                    -self.config.get("rocket.acceleration_limits.ax")[0],  # ax min
+                    -self.config.get("rocket.acceleration_limits.ay")[0],  # ay min
                     -self.config.get("rocket.attitude_limits.angle")[0],  # angle min
                     -self.config.get("rocket.attitude_limits.angular_velocity")[0],
                 ],
@@ -83,9 +87,13 @@ class RocketLandingEnv(gym.Env):
             self.observation_high = np.array(
                 [
                     self.config.get("rocket.position_limits.x")[1],  # x max
-                    self.config.get("rocket.position_limits.x")[1],  # y max
+                    self.config.get("rocket.position_limits.y")[
+                        1
+                    ],  # y max (fixed from x to y)
                     self.config.get("rocket.velocity_limits.vx")[1],  # vx max
                     self.config.get("rocket.velocity_limits.vy")[1],  # vy max
+                    self.config.get("rocket.acceleration_limits.ax")[1],  # ax max
+                    self.config.get("rocket.acceleration_limits.ay")[1],  # ay max
                     self.config.get("rocket.attitude_limits.angle")[1],  # angle max
                     self.config.get("rocket.attitude_limits.angular_velocity")[1],
                 ],
@@ -114,7 +122,7 @@ class RocketLandingEnv(gym.Env):
             raise
 
     def _get_obs(self) -> np.ndarray:
-        """Extracts the 6-element observation vector from the rocket's state."""
+        """Extracts the 8-element observation vector from the rocket's state."""
         try:
             state = self.rocket.get_state()
             # Ensure the order matches the observation space definition
@@ -124,8 +132,12 @@ class RocketLandingEnv(gym.Env):
                     state.get("y", 0.0),
                     state.get("vx", 0.0),
                     state.get("vy", 0.0),
+                    state.get("ax", 0.0),
+                    state.get("ay", 0.0),
                     state.get("angle", 0.0),
-                    state.get("angularVelocity", 0.0),
+                    state.get(
+                        "angularVelocity", 0.0
+                    ),  # Note: matches the key from get_state()
                 ],
                 dtype=np.float32,
             )
@@ -140,7 +152,7 @@ class RocketLandingEnv(gym.Env):
             logger.error(f"Error getting observation: {e}", exc_info=True)
             # Return zeros in case of error to avoid crashing the training
             # but log the error for debugging
-            return np.zeros(6, dtype=np.float32)
+            return np.zeros(8, dtype=np.float32)  # Fixed to return 8 elements
 
     def _get_info(self) -> Dict[str, Any]:
         """Returns auxiliary information about the state (not used for RL training)."""
@@ -236,7 +248,7 @@ class RocketLandingEnv(gym.Env):
         logger.debug(
             f"Step: {self.current_step}, Act: [{throttle:.2f},{cold_gas_control:.2f}], "
             f"Obs: [x:{observation[0]:.1f}, y:{observation[1]:.1f}, vx:{observation[2]:.1f}, vy:{observation[3]:.1f}, "
-            f"ang:{observation[4]:.1f}, angV:{observation[5]:.1f}], "
+            f"ax:{observation[4]:.1f}, ay:{observation[5]:.1f}, ang:{observation[6]:.1f}, angV:{observation[7]:.1f}], "
             f"Rew: {reward:.3f}, Term: {terminated}, Trunc: {truncated}"
         )
 
