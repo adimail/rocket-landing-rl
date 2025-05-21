@@ -101,19 +101,19 @@ class RLAgent:
         matching the environment's observation space order.
 
         **IMPORTANT:** This assumes the observation space order is:
-        [x, y, vx, vy, angle, angularVelocity]
+        [x, y, vx, vy, ax, ay, angle, angularVelocity]
         Adjust this if your RocketLandingEnv._get_obs() has a different order
         or different components.
         """
         try:
-            # --- Ensure this order matches your RocketLandingEnv._get_obs() ---
-            # --- AND that your model was trained with this observation space ---
             obs = np.array(
                 [
                     raw_state.get("x", 0.0),
                     raw_state.get("y", 0.0),
                     raw_state.get("vx", 0.0),
                     raw_state.get("vy", 0.0),
+                    raw_state.get("ax", 0.0),
+                    raw_state.get("ay", 0.0),
                     raw_state.get("angle", 0.0),
                     raw_state.get("angularVelocity", 0.0),
                 ],
@@ -131,7 +131,7 @@ class RLAgent:
                     and len(self.observation_shape) == 1
                     and obs.shape[0] == self.observation_shape[0]
                 ):
-                    pass  # Shape is okay (e.g., (7,) vs (7,))
+                    pass  # Shape is okay (e.g., (8,) vs (8,))
                 else:
                     return None  # Indicate failure
 
@@ -200,62 +200,3 @@ class RLAgent:
         except Exception as e:
             logger.error(f"Error during model prediction: {e}", exc_info=True)
             return None
-
-
-# Example Usage (Optional - for testing the agent directly)
-if __name__ == "__main__":
-    # Create dummy files if they don't exist for basic testing
-    # In reality, use paths from your actual training output
-    MODEL_ZIP = "assets/best_model.zip"
-    NORM_PKL = "assets/vecnormalize.pkl"
-
-    # You would need to have run train.py first to generate these files.
-    # If they don't exist, this example will fail unless you create placeholders
-    # or point to actual saved files.
-    if not os.path.exists(MODEL_ZIP) or not os.path.exists(NORM_PKL):
-        print(
-            f"Warning: Model ({MODEL_ZIP}) or VecNormalize ({NORM_PKL}) file not found."
-        )
-        print("         Please train a model first or update paths.")
-        # Example: Create placeholder files for basic structure testing (won't actually work)
-        # if not os.path.exists("assets"): os.makedirs("assets")
-        # if not os.path.exists(MODEL_ZIP): open(MODEL_ZIP, 'a').close() # Dummy file
-        # if not os.path.exists(NORM_PKL): open(NORM_PKL, 'a').close() # Dummy file
-        # exit() # Exit if files aren't real
-
-    try:
-        agent = RLAgent(model_path=MODEL_ZIP, vec_normalize_path=NORM_PKL)
-
-        # Example raw state (replace with actual state from your simulation)
-        # Make sure it includes all keys expected by _state_dict_to_obs_array
-        example_state = {
-            "x": 10.5,
-            "y": 1500.0,
-            "vx": -5.2,
-            "vy": -100.8,
-            "angle": 3.1,
-            "angularVelocity": -1.5,
-            "fuelMass": 300000.0,  # Example fuel value
-            "mass": 35000.0,
-            "ax": 0.1,
-            "ay": -9.0,
-            "speed": 101.0,
-            "relativeAngle": 3.1,
-            "totalMass": 335000.0,
-        }
-
-        predicted_action = agent.predict(example_state)
-
-        if predicted_action:
-            print(f"\nExample Prediction:")
-            print(
-                f"  Input State (subset): y={example_state['y']}, vy={example_state['vy']}, angle={example_state['angle']}, fuel={example_state['fuelMass']}"
-            )
-            print(f"  Predicted Action: {predicted_action}")
-        else:
-            print("\nFailed to get prediction.")
-
-    except FileNotFoundError:
-        print("Agent loading failed due to missing files.")
-    except Exception as e:
-        print(f"An error occurred during agent testing: {e}")

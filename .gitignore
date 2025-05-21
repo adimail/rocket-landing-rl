@@ -17,3 +17,5 @@ dist
 build
 *.csv
 output
+
+assets/model/dev

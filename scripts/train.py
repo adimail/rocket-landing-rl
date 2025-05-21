@@ -20,7 +20,7 @@ N_ENVS = 8  # Number of parallel environments (based on CPU cores)
 USE_SUBPROC_VEC_ENV = True
 
 # Evaluation and Saving Frequency (in total steps across all envs)
-EVAL_FREQ = max(50_000 // N_ENVS, 1)
+EVAL_FREQ = max(25_000 // N_ENVS, 1)
 CHECKPOINT_FREQ = max(100_000 // N_ENVS, 1)
 
 config_loader = Config()
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     )
 
     # --- Model Definition ---
-    policy_kwargs = dict(net_arch=[128, 128])
+    policy_kwargs = dict(net_arch=dict(pi=[256, 256], vf=[256, 256]))
 
     model = PPO(
         "MlpPolicy",

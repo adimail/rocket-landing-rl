@@ -8,7 +8,7 @@ simulation:
   loop: false
 
 model:
-  version: v1
+  version: v2
 
 environment:
   gravity: -9.81                           # m/s²
@@ -26,8 +26,8 @@ landing:
       speed_vy: 40.0                       # m/s
       angle: 8.0                           # degrees
     ok:
-      speed_vx: 50.0                       # m/s
-      speed_vy: 50.0                       # m/s
+      speed_vx: 100.0                       # m/s
+      speed_vy: 100.0                       # m/s
       angle: 10.0                          # degrees
 
 rocket:
@@ -70,8 +70,8 @@ rl:
     tipped_over: -300.0
     throttle_descent_reward_scale: 0.3
     cold_gas_reward_scale: 0.7
-    free_fall_penalty_scale: 0.2
-    angle_aware_throttle_scale: 0.3
+    free_fall_penalty_scale: -0.2
+    angle_aware_throttle_scale: -0.3
     horizontal_correction_scale: 0.2
     throttle_penalty_factor: 0.0
     rcs_penalty_factor: 0.0
@@ -80,18 +80,13 @@ rl:
     gamma: 0.99
 
   training:
-    total_timesteps: 2000000
-    eval_episodes: 20
-    save_interval: 100000
-    log_interval: 1000
-
     algorithm:
       PPO:
-        learning_rate: 0.0001
+        learning_rate: 0.0003
         batch_size: 64
         n_steps: 2048
         gamma: 0.99
-        ent_coef: 0.005
+        ent_coef: 0.01
         n_epochs: 10
         gae_lambda: 0.95
         max_grad_norm: 0.5

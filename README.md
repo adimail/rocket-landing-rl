@@ -12,12 +12,6 @@ you can change the number of rockets from the [`config.yaml`](https://github.com
 
 ---
 
-**current problems:**
-
-- incorrect reward function leading to improper training of ppo model
-
----
-
 **rocket state variables:**
 
 - **`x` (position x):**
