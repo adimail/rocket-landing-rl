@@ -72,14 +72,14 @@ class RocketLandingEnv(gym.Env):
             # [x, y, vx, vy, ax, ay, angle, angular_velocity]
             self.observation_low = np.array(
                 [
-                    -self.config.get("rocket.position_limits.x")[0],  # x min
+                    self.config.get("rocket.position_limits.x")[0],  # x min
                     0.0,  # y min (ground level)
-                    -self.config.get("rocket.velocity_limits.vx")[0],  # vx min
-                    -self.config.get("rocket.velocity_limits.vy")[0],  # vy min
-                    -self.config.get("rocket.acceleration_limits.ax")[0],  # ax min
-                    -self.config.get("rocket.acceleration_limits.ay")[0],  # ay min
-                    -self.config.get("rocket.attitude_limits.angle")[0],  # angle min
-                    -self.config.get("rocket.attitude_limits.angular_velocity")[0],
+                    self.config.get("rocket.velocity_limits.vx")[0],  # vx min
+                    self.config.get("rocket.velocity_limits.vy")[0],  # vy min
+                    self.config.get("rocket.acceleration_limits.ax")[0],  # ax min
+                    self.config.get("rocket.acceleration_limits.ay")[0],  # ay min
+                    self.config.get("rocket.attitude_limits.angle")[0],  # angle min
+                    self.config.get("rocket.attitude_limits.angular_velocity")[0],
                 ],
                 dtype=np.float32,
             )
