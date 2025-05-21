@@ -1,5 +1,5 @@
 import type { RocketState, RocketAction } from "@/types";
-import { renderStates, resetPersistentRewards } from "@/render";
+import { renderStates, resetRenderStates } from "@/render";
 
 export class RocketWebSocket {
   private socket: WebSocket;
@@ -58,7 +58,7 @@ export class RocketWebSocket {
         states = data.step.state;
         rewards = data.step.reward;
         dones = data.step.done;
-        landing = data.landing;
+        landing = data.landing; // Now landing can be received on any step, not just at the end
         if (data.step.prev_action_taken) {
           actions = data.step.prev_action_taken as RocketAction[];
         }
@@ -78,7 +78,7 @@ export class RocketWebSocket {
             this.numRockets,
             "rockets.",
           );
-          resetPersistentRewards(this.numRockets);
+          resetRenderStates(this.numRockets);
         }
         renderStates(states, actions, landing, rewards, dones);
       }
@@ -86,13 +86,13 @@ export class RocketWebSocket {
       if (data.initial) {
         console.log("[RocketWebSocket] Received initial state.");
         if (states) {
-          resetPersistentRewards(states.length);
+          resetRenderStates(states.length);
           renderStates(states, actions, landing, rewards, dones);
         }
       }
       if (data.restart) {
         console.log("[RocketWebSocket] Simulation restarted by server.");
-        resetPersistentRewards(this.numRockets);
+        resetRenderStates(this.numRockets);
       }
     } catch (err) {
       console.error(
@@ -145,7 +145,7 @@ export class RocketWebSocket {
         this.isRunning = false;
         if (startPauseBtn) startPauseBtn.textContent = "Start";
         this.sendCommand("restart");
-        resetPersistentRewards(this.numRockets);
+        resetRenderStates(this.numRockets);
       });
     }
 
@@ -167,7 +167,7 @@ export class RocketWebSocket {
     }
   }
 
-  private sendCommand(command: "start" | "pause" | "restart" | "toggle_agent") {
+  public sendCommand(command: "start" | "pause" | "restart" | "toggle_agent") {
     try {
       if (this.socket.readyState === WebSocket.OPEN) {
         this.socket.send(JSON.stringify({ command }));

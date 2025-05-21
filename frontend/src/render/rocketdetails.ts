@@ -3,9 +3,10 @@ import type { RocketState } from "../types";
 export function renderStateText(
   states: RocketState[],
   rewards: (number | null)[],
+  landingStatuses: (string | null)[] | null,
 ): void {
   try {
-    updateRocketStateDetails(states, rewards);
+    updateRocketStateDetails(states, rewards, landingStatuses);
   } catch (error) {
     console.error("Error rendering rocket state details:", error);
   }
@@ -14,6 +15,7 @@ export function renderStateText(
 function updateRocketStateDetails(
   states: RocketState[],
   rewards: (number | null)[],
+  landingStatuses: (string | null)[] | null,
 ): void {
   const detailsContainer = document.getElementById("rocketstatedetails");
   if (!detailsContainer) return;
@@ -26,12 +28,26 @@ function updateRocketStateDetails(
   states.forEach((state, index) => {
     const reward = rewards?.[index];
     const rewardDisplay =
-      reward !== undefined ? ` | reward: ${format(reward ?? 0)}` : "";
+      reward !== null && reward !== undefined
+        ? ` | reward: ${format(reward)}`
+        : "";
+
+    const landingStatus = landingStatuses?.[index] ?? null;
+    let backgroundColor = "";
+    if (
+      landingStatus === "safe" ||
+      landingStatus === "good" ||
+      landingStatus === "ok"
+    ) {
+      backgroundColor = "rgba(144, 238, 144, 0.2)";
+    } else if (landingStatus === "unsafe") {
+      backgroundColor = "rgba(255, 122, 122, 0.2)";
+    }
 
     htmlContent += `
-      <div style="margin-bottom: 12px; border: 1px solid #ccc; padding: 12px; border-radius: 6px;">
+      <div style="margin-bottom: 12px; border: 1px solid #ccc; padding: 12px; border-radius: 6px; background-color: ${backgroundColor};">
         <div style="font-weight: bold; margin-bottom: 6px;">
-          Rocket ${index + 1}${rewardDisplay}
+          Rocket ${index + 1}${rewardDisplay} ${landingStatus ? `| Landing: ${landingStatus}` : ""}
         </div>
         <hr/>
         <div style="margin-bottom: 4px;">Speed: <strong>${format(state.speed)}</strong> m/s</div>

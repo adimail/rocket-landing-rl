@@ -169,30 +169,57 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
     ):
         """Callback function invoked by SimulationController after a step."""
         try:
-            prev_action_taken = self.sim.prev_action_taken.copy()
+            prev_actions_from_sim = self.sim.prev_action_taken.copy()
+
+            actions_for_payload: List[Dict[str, float]] = []
+            for i in range(self.num_rockets):
+                original_action_for_rocket_i = {"throttle": 0.0, "coldGas": 0.0}
+
+                if i < len(prev_actions_from_sim):
+                    if isinstance(prev_actions_from_sim[i], dict):
+                        original_action_for_rocket_i = prev_actions_from_sim[i]
+                    else:
+                        self.logger.warning(
+                            f"Item at index {i} in prev_actions_from_sim is not a dict: {prev_actions_from_sim[i]}. "
+                            f"Defaulting to zero action for payload for rocket {i}."
+                        )
+                else:
+                    self.logger.warning(
+                        f"Index {i} is out of bounds for prev_actions_from_sim (length {len(prev_actions_from_sim)}). "
+                        f"Defaulting to zero action for payload for rocket {i}."
+                    )
+
+                if dones[i]:
+                    actions_for_payload.append({"throttle": 0.0, "coldGas": 0.0})
+                else:
+                    actions_for_payload.append(original_action_for_rocket_i)
 
             payload: Dict[str, Any] = {
                 "step": {
                     "state": states,
                     "reward": rewards,
                     "done": dones,
-                    "prev_action_taken": prev_action_taken,
+                    "prev_action_taken": actions_for_payload,
                 },
             }
 
-            all_done = all(dones)
-            if all_done:
-                landing_messages = []
+            payload["landing"] = [None] * self.num_rockets
+            evaluated_landings_this_step = []
 
-                for state in states:
-                    msg = evaluate_landing(state, self.config)
-                    landing_messages.append(msg["landing_message"])
+            for i in range(self.num_rockets):
+                if dones[i]:
+                    landing_eval = evaluate_landing(states[i], self.config)
+                    payload["landing"][i] = landing_eval["landing_message"]
+                    evaluated_landings_this_step.append(landing_eval["landing_message"])
 
-                payload["landing"] = landing_messages
-                self.logger.info(f"Landings: {landing_messages}")
+            if evaluated_landings_this_step:
+                self.logger.info(
+                    f"Landing evaluations this step: {evaluated_landings_this_step}"
+                )
 
             self.io_loop.add_callback(self.send_json, payload)
 
+            all_done = all(dones)
             if all_done and self.config.get("simulation.loop"):
                 self.io_loop.call_later(0.1, self._initiate_restart)
 
