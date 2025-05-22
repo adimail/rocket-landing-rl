@@ -1,5 +1,5 @@
 <video width="320" height="240" controls>
-  <source src="https://raw.githubusercontent.com/adimail/rocket-landing-rl/refs/heads/master/assets/docs/demo.mp4" type="video/mp4">
+  <source src="https://github.com/adimail/rocket-landing-rl/raw/refs/heads/master/assets/docs/demo.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
