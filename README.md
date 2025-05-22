@@ -1,3 +1,8 @@
+<video width="320" height="240" controls>
+  <source src="https://raw.githubusercontent.com/adimail/rocket-landing-rl/refs/heads/master/assets/docs/demo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 i wanted to build a full reinforcement learning system that could learn to land a vertically falling rocket booster safely back on the ground, mimicking the spacex falcon 9 landing. the booster starts in mid-air with an initial altitude, velocity, and orientation, and it must land softly, upright, and centered on a target zone (landing pad is not taken into the account as of now though).
 
 the system must simulate realistic physics (gravity, thrust, rotation, momentum), allow my model to control the booster through throttle and cold gas actions, and provide a reward signal that encourages safe and efficient landings. i want to visualize the simulation live as the model learns and interactively observe how the rocket behaves during training. i also want to be able to inspect the training process, pause it, resume it, and understand what the model is learning over time.
@@ -90,4 +95,14 @@ you can change the number of rockets from the [`config.yaml`](https://github.com
     - negative value (`< 0`): induces clockwise angular acceleration (rotate right).
     - zero value (`0`): no angular acceleration from cold gas thrusters.
 
-![demo](assets/docs/demo.gif)
+## version 1
+
+![demo](assets/docs/landers/v1.gif)
+
+## version 2
+
+![demo](assets/docs/landers/v2.gif)
+
+## version 3
+
+![demo](assets/docs/landers/v3.gif)
