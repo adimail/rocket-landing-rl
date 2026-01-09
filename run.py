@@ -21,7 +21,7 @@ async def main():
     shutdown_event = asyncio.Event()
 
     loop = asyncio.get_event_loop()
-    loop.add_signal_handler(signal.SIGINT, shutdown_event.set)
+    # loop.add_signal_handler(signal.SIGINT, shutdown_event.set)
 
     await shutdown_event.wait()
     logger.info("Shutting down application.")

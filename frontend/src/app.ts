@@ -4,7 +4,7 @@ import { RocketControls } from "@/utils/controls";
 
 document.addEventListener("DOMContentLoaded", () => {
   try {
-    const rocketSocket = new RocketWebSocket("ws://localhost:8080/ws");
+    const rocketSocket = new RocketWebSocket("ws://localhost:9000/ws");
 
     const rocketControls = new RocketControls(rocketSocket);
 
