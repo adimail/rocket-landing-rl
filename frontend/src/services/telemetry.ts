@@ -1,6 +1,23 @@
-import { useStore } from "@/lib/store";
 import { WS_URL } from "@/lib/constants";
-import type { WebSocketMessage, RocketAction } from "@/types/simulation";
+import type {
+  WebSocketMessage,
+  RocketAction,
+  ConnectionStatus,
+  RocketState,
+} from "@/types/simulation";
+
+interface TelemetryCallbacks {
+  onStatusChange: (status: ConnectionStatus) => void;
+  onLatencyUpdate: (latency: number) => void;
+  onSpeedUpdate: (speed: number) => void;
+  onSimulationUpdate: (data: {
+    states?: RocketState[];
+    actions?: RocketAction[];
+    landing?: (string | null)[];
+    rewards?: number[];
+  }) => void;
+  onReset: () => void;
+}
 
 class TelemetryService {
   private socket: WebSocket | null = null;
@@ -9,12 +26,17 @@ class TelemetryService {
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private lastPing = 0;
   private isExplicitlyDisconnected = false;
+  private callbacks: TelemetryCallbacks | null = null;
 
   constructor() {
     this.connect = this.connect.bind(this);
     this.disconnect = this.disconnect.bind(this);
     this.sendCommand = this.sendCommand.bind(this);
     this.sendAction = this.sendAction.bind(this);
+  }
+
+  public init(callbacks: TelemetryCallbacks) {
+    this.callbacks = callbacks;
   }
 
   public connect() {
@@ -26,17 +48,14 @@ class TelemetryService {
     }
 
     this.isExplicitlyDisconnected = false;
-    const store = useStore.getState();
-    store.setConnectionStatus("connecting");
+    this.callbacks?.onStatusChange("connecting");
 
-    // Clear existing timeouts
     if (this.errorGraceTimeout) clearTimeout(this.errorGraceTimeout);
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
-    // Set a timeout to flag error if connection takes too long
     this.errorGraceTimeout = setTimeout(() => {
       if (this.socket?.readyState !== WebSocket.OPEN) {
-        useStore.getState().setConnectionStatus("error");
+        this.callbacks?.onStatusChange("error");
       }
     }, 5000);
 
@@ -46,7 +65,7 @@ class TelemetryService {
       if (this.errorGraceTimeout) clearTimeout(this.errorGraceTimeout);
       if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
 
-      useStore.getState().setConnectionStatus("connected");
+      this.callbacks?.onStatusChange("connected");
       this.startPing();
     };
 
@@ -54,23 +73,20 @@ class TelemetryService {
       this.stopPing();
 
       if (this.isExplicitlyDisconnected) {
-        useStore.getState().setConnectionStatus("disconnected");
+        this.callbacks?.onStatusChange("disconnected");
         return;
       }
 
       if (event.code === 1000) {
-        useStore.getState().setConnectionStatus("disconnected");
+        this.callbacks?.onStatusChange("disconnected");
       } else {
-        // Unexpected close, attempt reconnect
         this.reconnectTimeout = setTimeout(this.connect, 3000);
       }
 
       if (this.errorGraceTimeout) clearTimeout(this.errorGraceTimeout);
     };
 
-    this.socket.onerror = () => {
-      // Error logic is largely handled by the grace timeout and onclose
-    };
+    this.socket.onerror = () => {};
 
     this.socket.onmessage = this.handleMessage;
   }
@@ -88,7 +104,7 @@ class TelemetryService {
 
   public sendCommand(command: string, payload?: object) {
     if (command === "restart") {
-      useStore.getState().resetHistory();
+      this.callbacks?.onReset();
     }
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({ command, ...payload }));
@@ -104,17 +120,15 @@ class TelemetryService {
   private handleMessage = (event: MessageEvent) => {
     try {
       const data: WebSocketMessage = JSON.parse(event.data);
-      const store = useStore.getState();
 
       if (data.status === "pong") {
-        store.setLatency(performance.now() - this.lastPing);
+        this.callbacks?.onLatencyUpdate(performance.now() - this.lastPing);
         return;
       }
 
-      if (data.speed !== undefined) store.setSpeed(data.speed);
-      if (data.restart) store.resetHistory();
+      if (data.speed !== undefined) this.callbacks?.onSpeedUpdate(data.speed);
+      if (data.restart) this.callbacks?.onReset();
 
-      // Normalize data structure
       let states = data.state;
       let actions = data.action;
       let landing = data.landing;
@@ -127,7 +141,12 @@ class TelemetryService {
         landing = data.landing;
       }
 
-      store.updateSimulation({ states, actions, landing, rewards });
+      this.callbacks?.onSimulationUpdate({
+        states,
+        actions,
+        landing,
+        rewards,
+      });
     } catch (e) {
       console.error("Telemetry parse error", e);
     }
@@ -138,8 +157,6 @@ class TelemetryService {
     this.pingInterval = setInterval(() => {
       if (this.socket?.readyState === WebSocket.OPEN) {
         this.lastPing = performance.now();
-        // Optional: Send a ping frame if server supports it, or just rely on traffic
-        // For this implementation, we assume the server might echo or we just track time
       }
     }, 2000);
   }
@@ -152,5 +169,4 @@ class TelemetryService {
   }
 }
 
-// Singleton instance
 export const telemetryService = new TelemetryService();

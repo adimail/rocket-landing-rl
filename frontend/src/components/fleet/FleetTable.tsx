@@ -13,9 +13,13 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useThrottle } from "@/hooks/useThrottle";
-import { LANDING_STATUSES } from "@/lib/constants";
 import type { RocketState } from "@/types/simulation";
 import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import {
+  getRocketStatus,
+  getStatusColor,
+  getStatusText,
+} from "@/lib/domain/rocket";
 
 interface TableRow {
   index: number;
@@ -65,27 +69,10 @@ export function FleetTable() {
         cell: (info) => {
           const rawStatus = info.getValue();
           const rocket = info.row.original.state;
-          let variant: "default" | "success" | "destructive" | "warning" =
-            "default";
-          let text = "Flying";
+          const normalized = getRocketStatus(rawStatus, rocket.vy, rocket.y);
+          const variant = getStatusColor(normalized);
+          const text = getStatusText(normalized, rawStatus);
 
-          const statusStr = rawStatus?.toLowerCase();
-          if (statusStr) {
-            if (LANDING_STATUSES.SUCCESS.some((s) => statusStr.includes(s))) {
-              variant = "success";
-              text = "Landed";
-            } else if (
-              LANDING_STATUSES.FAILURE.some((s) => statusStr.includes(s))
-            ) {
-              variant = "destructive";
-              text = "Crashed";
-            } else {
-              text = rawStatus || "Unknown";
-            }
-          } else if (rocket.y < 1.0 && Math.abs(rocket.vy) < 0.5) {
-            variant = "success";
-            text = "Landed";
-          }
           return <Badge variant={variant}>{text}</Badge>;
         },
         size: 100,
