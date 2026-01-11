@@ -8,7 +8,7 @@ import { SimulationHUD } from "./SimulationHUD";
 
 export function Viewport() {
   const rockets = useStore((s) => s.rockets);
-  const controlsRef = useRef<any>();
+  const controlsRef = useRef<any>(null);
 
   const moveCameraToFrontAllRockets = () => {
     const c = controlsRef.current;

@@ -1,6 +1,6 @@
 import { Suspense, useRef, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { PerspectiveCamera, Environment } from "@react-three/drei";
+import { PerspectiveCamera } from "@react-three/drei";
 import * as THREE from "three";
 import { useStore } from "@/lib/store";
 import { AltitudeTape } from "./AltitudeTape";
