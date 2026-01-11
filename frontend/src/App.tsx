@@ -1,9 +1,19 @@
+import { useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Viewport } from "@/components/simulation/Viewport";
 import { TelemetryPanel } from "@/components/telemetry/TelemetryPanel";
 import { FleetTable } from "@/components/fleet/FleetTable";
+import { telemetryService } from "@/services/telemetry";
 
 function App() {
+  useEffect(() => {
+    telemetryService.connect();
+
+    return () => {
+      telemetryService.disconnect();
+    };
+  }, []);
+
   return (
     <div className="h-screen w-screen bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden">
       <Header />
