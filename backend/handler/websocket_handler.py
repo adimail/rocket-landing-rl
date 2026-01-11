@@ -11,6 +11,9 @@ from backend.rl.agent import RLAgent
 
 
 class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
+    def check_origin(self, origin):
+        return True
+
     def initialize(self, logger):
         self.logger = logger
         self.config = Config()

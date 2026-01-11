@@ -1,0 +1,190 @@
+asyncapi: 3.0.0
+info:
+  title: Rocket Landing RL WebSocket API
+  version: 1.0.0
+  description: |
+    Real-time communication for the Rocket Landing Reinforcement Learning simulation.
+    Handles telemetry streaming for multiple rockets, manual control overrides,
+    and simulation lifecycle commands (start, pause, restart).
+  license:
+    name: MIT
+
+servers:
+  local:
+    host: localhost:9000
+    protocol: ws
+    description: Local Tornado WebSocket server
+
+channels:
+  /ws:
+    address: /ws
+    messages:
+      # Client to Server
+      commandRequest:
+        $ref: '#/components/messages/CommandRequest'
+      actionRequest:
+        $ref: '#/components/messages/ActionRequest'
+      speedRequest:
+        $ref: '#/components/messages/SpeedRequest'
+      # Server to Client
+      telemetryUpdate:
+        $ref: '#/components/messages/TelemetryUpdate'
+      statusUpdate:
+        $ref: '#/components/messages/StatusUpdate'
+
+operations:
+  receiveTelemetry:
+    action: receive
+    channel:
+      $ref: '#/channels/~1ws'
+    messages:
+      - $ref: '#/components/messages/TelemetryUpdate'
+      - $ref: '#/components/messages/StatusUpdate'
+    summary: Messages sent by the server to update the frontend state.
+
+  sendCommand:
+    action: send
+    channel:
+      $ref: '#/channels/~1ws'
+    messages:
+      - $ref: '#/components/messages/CommandRequest'
+      - $ref: '#/components/messages/ActionRequest'
+      - $ref: '#/components/messages/SpeedRequest'
+    summary: Messages sent by the client to control the simulation.
+
+components:
+  messages:
+    CommandRequest:
+      summary: Simulation lifecycle commands.
+      payload:
+        type: object
+        properties:
+          command:
+            type: string
+            enum: [start, pause, restart, toggle_agent]
+        required: [command]
+
+    ActionRequest:
+      summary: Manual control inputs for a specific rocket.
+      payload:
+        type: object
+        properties:
+          rocket_index:
+            type: integer
+            minimum: 0
+          action:
+            $ref: '#/components/schemas/RocketAction'
+        required: [rocket_index, action]
+
+    SpeedRequest:
+      summary: Adjust simulation physics speed.
+      payload:
+        type: object
+        properties:
+          speed:
+            type: number
+            minimum: 0.01
+        required: [speed]
+
+    TelemetryUpdate:
+      summary: Batched state update for all rockets in the simulation.
+      payload:
+        type: object
+        properties:
+          initial:
+            type: boolean
+          restart:
+            type: boolean
+          step:
+            type: object
+            properties:
+              state:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RocketState'
+              reward:
+                type: array
+                items:
+                  type: number
+              done:
+                type: array
+                items:
+                  type: boolean
+              prev_action_taken:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RocketAction'
+          landing:
+            type: array
+            items:
+              type: string
+              nullable: true
+              description: Evaluation message (e.g., 'safe', 'good', 'unsafe')
+
+    StatusUpdate:
+      summary: General status notifications.
+      payload:
+        type: object
+        properties:
+          status:
+            type: string
+          speed:
+            type: number
+
+  schemas:
+    RocketAction:
+      type: object
+      properties:
+        throttle:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Main engine power.
+        coldGas:
+          type: number
+          minimum: -1
+          maximum: 1
+          description: RCS Torque (-1 for clockwise, 1 for counter-clockwise).
+
+    RocketState:
+      type: object
+      properties:
+        x:
+          type: number
+          description: Horizontal position (meters).
+        y:
+          type: number
+          description: Altitude (meters).
+        vx:
+          type: number
+          description: Horizontal velocity (m/s).
+        vy:
+          type: number
+          description: Vertical velocity (m/s).
+        ax:
+          type: number
+          description: Horizontal acceleration (m/s²).
+        ay:
+          type: number
+          description: Vertical acceleration (m/s²).
+        angle:
+          type: number
+          description: Tilt angle from vertical (degrees).
+        angularVelocity:
+          type: number
+          description: Rotation speed (deg/s).
+        mass:
+          type: number
+          description: Dry mass (kg).
+        fuelMass:
+          type: number
+          description: Remaining propellant (kg).
+        totalMass:
+          type: number
+          description: Combined mass (kg).
+        speed:
+          type: number
+          description: Absolute velocity magnitude (m/s).
+        relativeAngle:
+          type: number
+          description: Absolute value of tilt (degrees).
