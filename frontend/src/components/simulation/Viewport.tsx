@@ -1,6 +1,6 @@
-import { Suspense } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Grid, Environment } from "@react-three/drei";
+import { OrbitControls, Grid } from "@react-three/drei";
 import { Rocket3D } from "./Rocket3D";
 import { useStore } from "@/lib/store";
 import { useSocket } from "@/hooks/useSocket";
@@ -12,42 +12,62 @@ export function Viewport() {
   const isAgentEnabled = useStore((s) => s.isAgentEnabled);
   const { sendCommand } = useSocket();
   const toggleAgent = useStore((s) => s.toggleAgent);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const controlsRef = useRef();
+
+  const handlePlay = () => {
+    setIsPlaying(true);
+    sendCommand("start");
+  };
+
+  const handlePause = () => {
+    setIsPlaying(false);
+    sendCommand("pause");
+  };
+
+  const handleRestart = () => {
+    setIsPlaying(true);
+    sendCommand("restart");
+  };
+
+  const moveCameraToFrontAllRockets = () => {
+    const c = controlsRef.current;
+    if (!c) return;
+    c.object.position.set(0, 80, 800);
+    c.target.set(0, 0, 0);
+    c.update();
+  };
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const c = controlsRef.current;
+      if (!c) return;
+      c.object.position.set(0, 80, 800);
+      c.target.set(0, 0, 0);
+      c.update();
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   return (
-    <div className="relative w-full h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-inner">
-      <Canvas shadows camera={{ position: [0, 20, 100], fov: 45, far: 20000 }}>
-        {/* Sky Color */}
-        <color attach="background" args={["#e0f2fe"]} />
-
-        <ambientLight intensity={0.7} />
+    <div className="relative w-full h-full bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-inner">
+      <Canvas camera={{ position: [0, 80, 800], fov: 45, far: 20000 }}>
+        <ambientLight intensity={0.2} />
         <directionalLight
           position={[50, 100, 50]}
-          intensity={1.5}
+          intensity={5.0}
           castShadow
           shadow-mapSize={[2048, 2048]}
         />
-        <Environment preset="city" />
 
-        {/* Dark Ground Plane */}
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, -0.05, 0]}
-          receiveShadow
-        >
-          <planeGeometry args={[2000, 2000]} />
-          <meshStandardMaterial color="#0f172a" />
-        </mesh>
-
-        {/* Grid with white lines */}
         <Grid
           position={[0, 0, 0]}
-          args={[10000, 10000]}
-          sectionSize={20}
-          cellSize={2}
-          cellColor="#64748b"
-          sectionColor="#ffffff"
-          fadeDistance={10000}
-          infiniteGrid
+          args={[2000, 2000]}
+          sectionSize={50}
+          cellSize={5}
+          cellColor="#334e68"
+          sectionColor="#5f6670"
+          fadeDistance={1500}
         />
 
         <Suspense fallback={null}>
@@ -57,33 +77,54 @@ export function Viewport() {
         </Suspense>
 
         <OrbitControls
+          ref={controlsRef}
           makeDefault
-          maxPolarAngle={Math.PI / 2}
-          maxDistance={8000}
+          maxPolarAngle={Math.PI / 2 - 0.05}
+          minDistance={20}
+          maxDistance={1000}
+          enablePan={true}
+          panSpeed={0.5}
+          rotateSpeed={0.5}
         />
       </Canvas>
 
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur shadow-lg border border-slate-200 rounded-full px-4 py-2 flex items-center gap-2">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md shadow-lg border border-white/10 rounded-full px-4 py-2 flex items-center gap-2">
+        {!isPlaying ? (
+          <button
+            onClick={handlePlay}
+            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <Play className="w-5 h-5 text-white" fill="currentColor" />
+          </button>
+        ) : (
+          <button
+            onClick={handlePause}
+            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <Pause className="w-5 h-5 text-white" fill="currentColor" />
+          </button>
+        )}
+
+        <div className="w-px h-4 bg-white/20 mx-1" />
+
         <button
-          onClick={() => sendCommand("start")}
-          className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+          onClick={handleRestart}
+          className="p-2 hover:bg-white/20 rounded-full transition-colors"
         >
-          <Play className="w-5 h-5 text-slate-700" fill="currentColor" />
+          <RotateCcw className="w-5 h-5 text-white" />
         </button>
+
+        <div className="w-px h-4 bg-white/20 mx-1" />
+
         <button
-          onClick={() => sendCommand("pause")}
-          className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+          onClick={moveCameraToFrontAllRockets}
+          className="p-2 hover:bg-white/20 rounded-full transition-colors"
         >
-          <Pause className="w-5 h-5 text-slate-700" fill="currentColor" />
+          <span className="text-sm text-white">Front View</span>
         </button>
-        <div className="w-px h-4 bg-slate-300 mx-1" />
-        <button
-          onClick={() => sendCommand("restart")}
-          className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-        >
-          <RotateCcw className="w-5 h-5 text-slate-700" />
-        </button>
-        <div className="w-px h-4 bg-slate-300 mx-1" />
+
+        <div className="w-px h-4 bg-white/20 mx-1" />
+
         <button
           onClick={() => {
             toggleAgent();
@@ -92,8 +133,8 @@ export function Viewport() {
           className={cn(
             "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
             isAgentEnabled
-              ? "bg-indigo-100 text-indigo-700"
-              : "hover:bg-slate-100 text-slate-600",
+              ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
+              : "hover:bg-white/20 text-slate-300",
           )}
         >
           <Zap className="w-4 h-4" />
