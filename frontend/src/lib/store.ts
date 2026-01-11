@@ -6,7 +6,7 @@ import type {
   ConnectionStatus,
 } from "@/types/simulation";
 
-interface TelemetryHistory {
+export interface TelemetryHistory {
   [rocketIndex: number]: {
     ticks: number[];
     vy: number[];
@@ -21,6 +21,8 @@ interface TelemetryHistory {
   };
 }
 
+export const telemetryHistory: TelemetryHistory = {};
+
 interface SimulationStore {
   status: ConnectionStatus;
   latency: number;
@@ -32,7 +34,6 @@ interface SimulationStore {
   rewards: number[];
   selectedRocketIndex: number;
   isAgentEnabled: boolean;
-  history: TelemetryHistory;
   activeCharts: string[];
 
   setConnectionStatus: (status: ConnectionStatus) => void;
@@ -62,7 +63,6 @@ export const useStore = create<SimulationStore>()(
     rewards: [],
     selectedRocketIndex: 0,
     isAgentEnabled: true,
-    history: {},
     activeCharts: ["vy", "vx", "angle", "reward"],
 
     setConnectionStatus: (status) => set({ status }),
@@ -72,12 +72,11 @@ export const useStore = create<SimulationStore>()(
     updateSimulation: (data) =>
       set((state) => {
         const newTick = state.tick + 1;
-        const newHistory = { ...state.history };
 
         if (data.states) {
           data.states.forEach((s, i) => {
-            if (!newHistory[i]) {
-              newHistory[i] = {
+            if (!telemetryHistory[i]) {
+              telemetryHistory[i] = {
                 ticks: [],
                 vy: [],
                 vx: [],
@@ -90,7 +89,7 @@ export const useStore = create<SimulationStore>()(
                 reward: [],
               };
             }
-            const h = newHistory[i];
+            const h = telemetryHistory[i];
             h.ticks.push(newTick);
             h.vy.push(s.vy);
             h.vx.push(s.vx);
@@ -103,7 +102,16 @@ export const useStore = create<SimulationStore>()(
             h.reward.push(data.rewards?.[i] || 0);
 
             if (h.ticks.length > 1000) {
-              Object.keys(h).forEach((k) => h[k as keyof typeof h].shift());
+              h.ticks.shift();
+              h.vy.shift();
+              h.vx.shift();
+              h.ay.shift();
+              h.ax.shift();
+              h.angle.shift();
+              h.angularVelocity.shift();
+              h.angularAcceleration.shift();
+              h.speed.shift();
+              h.reward.shift();
             }
           });
         }
@@ -114,7 +122,6 @@ export const useStore = create<SimulationStore>()(
           actions: data.actions || state.actions,
           landingStatus: data.landing || state.landingStatus,
           rewards: data.rewards || state.rewards,
-          history: newHistory,
         };
       }),
 
@@ -127,6 +134,11 @@ export const useStore = create<SimulationStore>()(
           ? state.activeCharts.filter((c) => c !== key)
           : [...state.activeCharts, key],
       })),
-    resetHistory: () => set({ history: {}, tick: 0 }),
+    resetHistory: () => {
+      Object.keys(telemetryHistory).forEach((key) => {
+        delete telemetryHistory[Number(key)];
+      });
+      set({ tick: 0 });
+    },
   })),
 );

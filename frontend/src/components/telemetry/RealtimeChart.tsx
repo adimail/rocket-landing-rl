@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
-import { useStore } from "@/lib/store";
+import { useStore, telemetryHistory } from "@/lib/store";
 
 interface RealTimeChartProps {
   dataKey: string;
@@ -17,10 +17,10 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const initialHistory =
-      useStore.getState().history[selectedIndex]?.[dataKey as any] || [];
-    const initialTicks =
-      useStore.getState().history[selectedIndex]?.ticks || [];
+    const history = telemetryHistory[selectedIndex];
+    const initialTicks = history?.ticks || [];
+    const initialData =
+      (history?.[dataKey as keyof typeof history] as number[]) || [];
 
     const opts: uPlot.Options = {
       width: containerRef.current.clientWidth,
@@ -51,17 +51,18 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
 
     uplotRef.current = new uPlot(
       opts,
-      [initialTicks, initialHistory],
+      [initialTicks, initialData],
       containerRef.current,
     );
 
     const unsub = useStore.subscribe(
-      (state) => state.history[selectedIndex],
-      (history) => {
-        if (!history || !uplotRef.current) return;
+      (state) => state.tick,
+      () => {
+        const h = telemetryHistory[selectedIndex];
+        if (!h || !uplotRef.current) return;
         uplotRef.current.setData([
-          history.ticks,
-          history[dataKey as keyof typeof history] as number[],
+          h.ticks,
+          h[dataKey as keyof typeof h] as number[],
         ]);
       },
     );
