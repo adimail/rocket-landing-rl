@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from "react";
+import { useRef, useMemo, useState, useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -29,6 +29,18 @@ interface TableRow {
 }
 
 const columnHelper = createColumnHelper<TableRow>();
+
+const NumericCell = ({
+  value,
+  decimals = 1,
+}: {
+  value: number;
+  decimals?: number;
+}) => (
+  <div className="text-right font-mono pr-4 text-slate-300">
+    {value.toFixed(decimals)}
+  </div>
+);
 
 export function FleetTable() {
   const status = useStore((s) => s.status);
@@ -62,7 +74,7 @@ export function FleetTable() {
             #{info.getValue() + 1}
           </span>
         ),
-        size: 60,
+        size: 50,
       }),
       columnHelper.accessor("status", {
         header: "Status",
@@ -72,29 +84,8 @@ export function FleetTable() {
           const normalized = getRocketStatus(rawStatus, rocket.vy, rocket.y);
           const variant = getStatusColor(normalized);
           const text = getStatusText(normalized, rawStatus);
-
           return <Badge variant={variant}>{text}</Badge>;
         },
-        size: 100,
-      }),
-      columnHelper.accessor("state.y", {
-        id: "altitude",
-        header: "Alt (m)",
-        cell: (info) => (
-          <div className="text-right font-mono pr-4 text-slate-300">
-            {info.getValue().toFixed(1)}
-          </div>
-        ),
-        size: 90,
-      }),
-      columnHelper.accessor("state.vy", {
-        id: "velocity",
-        header: "Vel (m/s)",
-        cell: (info) => (
-          <div className="text-right font-mono pr-4 text-slate-300">
-            {info.getValue().toFixed(1)}
-          </div>
-        ),
         size: 90,
       }),
       columnHelper.accessor("reward", {
@@ -117,19 +108,70 @@ export function FleetTable() {
             </div>
           );
         },
-        size: 100,
+        size: 80,
+      }),
+      columnHelper.accessor("state.x", {
+        header: "X (m)",
+        cell: (info) => <NumericCell value={info.getValue()} />,
+        size: 70,
+      }),
+      columnHelper.accessor("state.y", {
+        header: "Alt (m)",
+        cell: (info) => <NumericCell value={info.getValue()} />,
+        size: 70,
+      }),
+      columnHelper.accessor("state.vx", {
+        header: "VX (m/s)",
+        cell: (info) => <NumericCell value={info.getValue()} />,
+        size: 80,
+      }),
+      columnHelper.accessor("state.vy", {
+        header: "VY (m/s)",
+        cell: (info) => <NumericCell value={info.getValue()} />,
+        size: 80,
+      }),
+      columnHelper.accessor("state.ax", {
+        header: "AX (m/s²)",
+        cell: (info) => <NumericCell value={info.getValue()} />,
+        size: 80,
+      }),
+      columnHelper.accessor("state.ay", {
+        header: "AY (m/s²)",
+        cell: (info) => <NumericCell value={info.getValue()} />,
+        size: 80,
+      }),
+      columnHelper.accessor("state.angle", {
+        header: "Angle (°)",
+        cell: (info) => <NumericCell value={info.getValue()} />,
+        size: 80,
+      }),
+      columnHelper.accessor("state.angularVelocity", {
+        header: "ω (°/s)",
+        cell: (info) => <NumericCell value={info.getValue()} />,
+        size: 80,
+      }),
+      columnHelper.accessor("state.speed", {
+        header: "Speed",
+        cell: (info) => <NumericCell value={info.getValue()} />,
+        size: 70,
       }),
       columnHelper.accessor("state.fuelMass", {
         id: "fuel",
         header: "Fuel",
         cell: (info) => (
-          <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden min-w-[80px] mr-4">
-            <div
-              className="h-full bg-slate-500 transition-all duration-300"
-              style={{ width: `${(info.getValue() / 400000) * 100}%` }}
-            />
+          <div className="flex items-center gap-2 pr-4">
+            <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden min-w-[60px]">
+              <div
+                className="h-full bg-slate-500 transition-all duration-300"
+                style={{ width: `${(info.getValue() / 410000) * 100}%` }}
+              />
+            </div>
+            <span className="text-[10px] font-mono text-slate-500 w-8 text-right">
+              {(info.getValue() / 1000).toFixed(0)}k
+            </span>
           </div>
         ),
+        size: 120,
       }),
     ],
     [],
@@ -154,6 +196,17 @@ export function FleetTable() {
     overscan: 10,
   });
 
+  useEffect(() => {
+    if (selectedIndex !== -1) {
+      const virtualIndex = rows.findIndex(
+        (row) => row.original.index === selectedIndex,
+      );
+      if (virtualIndex !== -1) {
+        rowVirtualizer.scrollToIndex(virtualIndex, { align: "auto" });
+      }
+    }
+  }, [selectedIndex, rows, rowVirtualizer]);
+
   if (
     status === "connecting" ||
     (status === "connected" && rockets.length === 0)
@@ -175,94 +228,87 @@ export function FleetTable() {
 
   return (
     <div className="h-full flex flex-col bg-slate-900 rounded-xl border border-slate-800 shadow-xl overflow-hidden">
-      <div className="bg-slate-950 border-b border-slate-800">
-        {table.getHeaderGroups().map((headerGroup) => (
-          <div key={headerGroup.id} className="flex items-center px-4 py-3">
-            {headerGroup.headers.map((header) => {
-              const isSortable = header.column.getCanSort();
-              const sortDirection = header.column.getIsSorted();
+      <div className="flex-1 overflow-auto custom-scrollbar" ref={parentRef}>
+        <div style={{ minWidth: "max-content" }}>
+          <div className="sticky top-0 z-10 bg-slate-950 border-b border-slate-800">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <div key={headerGroup.id} className="flex items-center px-4 py-3">
+                {headerGroup.headers.map((header) => {
+                  const isSortable = header.column.getCanSort();
+                  const sortDirection = header.column.getIsSorted();
+
+                  return (
+                    <div
+                      key={header.id}
+                      className={cn(
+                        "text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 select-none",
+                        isSortable && "cursor-pointer hover:text-slate-300",
+                      )}
+                      style={{ width: header.getSize() }}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                      {isSortable && (
+                        <span className="text-slate-600">
+                          {sortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : sortDirection === "desc" ? (
+                            <ChevronDown className="w-3 h-3" />
+                          ) : (
+                            <ChevronsUpDown className="w-3 h-3 opacity-30" />
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              const isSelected = selectedIndex === row.original.index;
 
               return (
                 <div
-                  key={header.id}
+                  key={row.id}
+                  onClick={() => setSelectedIndex(row.original.index)}
                   className={cn(
-                    "text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 select-none",
-                    isSortable && "cursor-pointer hover:text-slate-300",
+                    "absolute top-0 left-0 w-full flex items-center px-4 h-[44px] border-b border-slate-800/50 cursor-pointer transition-all hover:bg-slate-800/50",
+                    isSelected &&
+                      "bg-blue-500/10 border-l-2 border-l-blue-500 hover:bg-blue-500/15",
                   )}
                   style={{
-                    width: header.getSize() === 150 ? "auto" : header.getSize(),
-                    flex: header.getSize() === 150 ? 1 : "none",
+                    transform: `translateY(${virtualRow.start}px)`,
                   }}
-                  onClick={header.column.getToggleSortingHandler()}
                 >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext(),
-                  )}
-                  {isSortable && (
-                    <span className="text-slate-600">
-                      {sortDirection === "asc" ? (
-                        <ChevronUp className="w-3 h-3" />
-                      ) : sortDirection === "desc" ? (
-                        <ChevronDown className="w-3 h-3" />
-                      ) : (
-                        <ChevronsUpDown className="w-3 h-3 opacity-30" />
+                  {row.getVisibleCells().map((cell) => (
+                    <div
+                      key={cell.id}
+                      className="text-sm"
+                      style={{ width: cell.column.getSize() }}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
                       )}
-                    </span>
-                  )}
+                    </div>
+                  ))}
                 </div>
               );
             })}
           </div>
-        ))}
-      </div>
-
-      <div
-        ref={parentRef}
-        className="flex-1 overflow-auto bg-slate-900 custom-scrollbar"
-      >
-        <div
-          style={{
-            height: `${rowVirtualizer.getTotalSize()}px`,
-            width: "100%",
-            position: "relative",
-          }}
-        >
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const row = rows[virtualRow.index];
-            const isSelected = selectedIndex === row.original.index;
-
-            return (
-              <div
-                key={row.id}
-                onClick={() => setSelectedIndex(row.original.index)}
-                className={cn(
-                  "absolute top-0 left-0 w-full flex items-center px-4 h-[44px] border-b border-slate-800/50 cursor-pointer transition-all hover:bg-slate-800/50",
-                  isSelected &&
-                    "bg-blue-500/10 border-l-2 border-l-blue-500 hover:bg-blue-500/15",
-                )}
-                style={{
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <div
-                    key={cell.id}
-                    className="text-sm"
-                    style={{
-                      width:
-                        cell.column.getSize() === 150
-                          ? "auto"
-                          : cell.column.getSize(),
-                      flex: cell.column.getSize() === 150 ? 1 : "none",
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </div>
-                ))}
-              </div>
-            );
-          })}
         </div>
       </div>
     </div>

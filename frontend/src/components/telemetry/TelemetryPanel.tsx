@@ -74,8 +74,12 @@ export function TelemetryPanel() {
                 <Skeleton className="h-24 w-full bg-slate-800" />
               </Card>
             ))
-          : AVAILABLE_METRICS.filter((m) => activeCharts.includes(m.id)).map(
-              (m) => (
+          : activeCharts.map((chartId) => {
+              const m = AVAILABLE_METRICS.find(
+                (metric) => metric.id === chartId,
+              );
+              if (!m) return null;
+              return (
                 <Card
                   key={m.id}
                   className="p-0 border-slate-800 bg-slate-950/30 overflow-hidden"
@@ -93,8 +97,8 @@ export function TelemetryPanel() {
                     />
                   </div>
                 </Card>
-              ),
-            )}
+              );
+            })}
       </div>
     </div>
   );

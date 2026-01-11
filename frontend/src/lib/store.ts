@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
+import { subscribeWithSelector, persist } from "zustand/middleware";
 import type {
   RocketState,
   RocketAction,
@@ -75,77 +75,101 @@ interface SimulationStore {
 }
 
 export const useStore = create<SimulationStore>()(
-  subscribeWithSelector((set) => ({
-    status: "connecting",
-    latency: 0,
-    speed: 1.0,
-    tick: 0,
-    rockets: [],
-    actions: [],
-    landingStatus: [],
-    rewards: [],
-    selectedRocketIndex: 0,
-    isAgentEnabled: true,
-    activeCharts: ["vy", "vx", "angle", "reward"],
-    isPlaying: false,
+  subscribeWithSelector(
+    persist(
+      (set) => ({
+        status: "connecting",
+        latency: 0,
+        speed: 1.0,
+        tick: 0,
+        rockets: [],
+        actions: [],
+        landingStatus: [],
+        rewards: [],
+        selectedRocketIndex: 0,
+        isAgentEnabled: true,
+        activeCharts: ["vy", "vx", "angle", "reward"],
+        isPlaying: false,
 
-    setConnectionStatus: (status) => set({ status }),
-    setLatency: (latency) => set({ latency }),
-    setSpeed: (speed) => set({ speed }),
+        setConnectionStatus: (status) => set({ status }),
+        setLatency: (latency) => set({ latency }),
+        setSpeed: (speed) => set({ speed }),
 
-    updateSimulation: (data) =>
-      set((state) => {
-        const newTick = state.tick + 1;
+        updateSimulation: (data) =>
+          set((state) => {
+            const newTick = state.tick + 1;
 
-        if (data.states) {
-          data.states.forEach((s, i) => {
-            const h = initHistory(i);
-            h.ticks.push(newTick);
-            h.vy.push(s.vy);
-            h.vx.push(s.vx);
-            h.ay.push(s.ay);
-            h.ax.push(s.ax);
-            h.angle.push(s.angle);
-            h.angularVelocity.push(s.angularVelocity);
-            h.angularAcceleration.push(s.angularAcceleration);
-            h.speed.push(s.speed);
-            h.reward.push(data.rewards?.[i] || 0);
+            if (data.states) {
+              data.states.forEach((s, i) => {
+                const h = initHistory(i);
+                h.ticks.push(newTick);
+                h.vy.push(s.vy);
+                h.vx.push(s.vx);
+                h.ay.push(s.ay);
+                h.ax.push(s.ax);
+                h.angle.push(s.angle);
+                h.angularVelocity.push(s.angularVelocity);
+                h.angularAcceleration.push(s.angularAcceleration);
+                h.speed.push(s.speed);
+                h.reward.push(data.rewards?.[i] || 0);
+              });
+            }
+
+            return {
+              tick: newTick,
+              rockets: data.states || state.rockets,
+              actions: data.actions || state.actions,
+              landingStatus: data.landing || state.landingStatus,
+              rewards: data.rewards || state.rewards,
+            };
+          }),
+
+        setSelectedRocket: (index) => set({ selectedRocketIndex: index }),
+        toggleAgent: () =>
+          set((state) => ({ isAgentEnabled: !state.isAgentEnabled })),
+        toggleChart: (key) =>
+          set((state) => {
+            const isAlreadyActive = state.activeCharts.includes(key);
+            if (isAlreadyActive) {
+              return {
+                activeCharts: state.activeCharts.filter((c) => c !== key),
+              };
+            } else {
+              return {
+                activeCharts: [key, ...state.activeCharts],
+              };
+            }
+          }),
+        resetHistory: () => {
+          Object.values(telemetryHistory).forEach((h) => {
+            h.ticks.clear();
+            h.vy.clear();
+            h.vx.clear();
+            h.ay.clear();
+            h.ax.clear();
+            h.angle.clear();
+            h.angularVelocity.clear();
+            h.angularAcceleration.clear();
+            h.speed.clear();
+            h.reward.clear();
           });
-        }
-
-        return {
-          tick: newTick,
-          rockets: data.states || state.rockets,
-          actions: data.actions || state.actions,
-          landingStatus: data.landing || state.landingStatus,
-          rewards: data.rewards || state.rewards,
-        };
+          set({
+            tick: 0,
+            rockets: [],
+            actions: [],
+            landingStatus: [],
+            rewards: [],
+          });
+        },
+        setIsPlaying: (isPlaying) => set({ isPlaying }),
       }),
-
-    setSelectedRocket: (index) => set({ selectedRocketIndex: index }),
-    toggleAgent: () =>
-      set((state) => ({ isAgentEnabled: !state.isAgentEnabled })),
-    toggleChart: (key) =>
-      set((state) => ({
-        activeCharts: state.activeCharts.includes(key)
-          ? state.activeCharts.filter((c) => c !== key)
-          : [...state.activeCharts, key],
-      })),
-    resetHistory: () => {
-      Object.values(telemetryHistory).forEach((h) => {
-        h.ticks.clear();
-        h.vy.clear();
-        h.vx.clear();
-        h.ay.clear();
-        h.ax.clear();
-        h.angle.clear();
-        h.angularVelocity.clear();
-        h.angularAcceleration.clear();
-        h.speed.clear();
-        h.reward.clear();
-      });
-      set({ tick: 0 });
-    },
-    setIsPlaying: (isPlaying) => set({ isPlaying }),
-  })),
+      {
+        name: "rocket-sim-storage",
+        partialize: (state) => ({
+          activeCharts: state.activeCharts,
+          isAgentEnabled: state.isAgentEnabled,
+        }),
+      },
+    ),
+  ),
 );

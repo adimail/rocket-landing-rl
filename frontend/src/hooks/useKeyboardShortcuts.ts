@@ -23,6 +23,14 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      if (event.key === "r" || event.key === "R") {
+        event.preventDefault();
+        if (status !== "connected") return;
+        setIsPlaying(true);
+        sendCommand("restart");
+        return;
+      }
+
       if (rocketCount === 0) return;
 
       if (event.key === "ArrowUp" || event.key === "ArrowLeft") {

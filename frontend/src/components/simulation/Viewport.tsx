@@ -6,6 +6,7 @@ import { Rocket3D } from "./Rocket3D";
 import { useStore } from "@/lib/store";
 import { ConnectionOverlay } from "./ConnectionOverlay";
 import { SimulationHUD } from "./SimulationHUD";
+import { ViewportOverlays } from "./ViewportOverlays";
 
 function CameraManager({ resetSignal }: { resetSignal: number }) {
   const controlsRef = useRef<any>(null);
@@ -92,6 +93,7 @@ export function Viewport() {
       </Canvas>
 
       <SimulationHUD onResetCamera={handleResetCamera} />
+      <ViewportOverlays />
     </div>
   );
 }
