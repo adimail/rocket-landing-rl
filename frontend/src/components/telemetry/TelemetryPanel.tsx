@@ -1,116 +1,72 @@
 import { useStore } from "@/lib/store";
 import { Card } from "@/components/ui/Card";
-import { AltitudeTape } from "./AltitudeTape";
+import { RocketPreview } from "./RocketPreview";
+import { StatsGrid } from "./StatsGrid";
 import { RealTimeChart } from "./RealTimeChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@radix-ui/react-tabs";
-import { Rocket } from "lucide-react";
-
-function MetricBox({
-  label,
-  valueKey,
-  unit,
-}: {
-  label: string;
-  valueKey: keyof import("@/types/simulation").RocketState;
-  unit: string;
-}) {
-  const selectedIndex = useStore((s) => s.selectedRocketIndex);
-  const ref = React.useRef<HTMLSpanElement>(null);
-
-  React.useEffect(() => {
-    return useStore.subscribe(
-      (state) => state.rockets[selectedIndex]?.[valueKey],
-      (val) => {
-        if (ref.current && val !== undefined) {
-          ref.current.innerText = val.toFixed(2);
-        }
-      },
-    );
-  }, [selectedIndex, valueKey]);
-
-  return (
-    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-      <div className="text-[10px] uppercase text-slate-400 font-bold tracking-wider mb-1">
-        {label}
-      </div>
-      <div className="font-mono text-lg text-slate-700">
-        <span ref={ref}>0.00</span>{" "}
-        <span className="text-xs text-slate-400">{unit}</span>
-      </div>
-    </div>
-  );
-}
-
-import * as React from "react";
 
 export function TelemetryPanel() {
   const selectedIndex = useStore((s) => s.selectedRocketIndex);
 
   return (
     <div className="h-full flex flex-col gap-4">
-      {/* Top: Rocket Focus */}
-      <Card className="flex-1 flex overflow-hidden">
-        <div className="flex-1 p-6 flex flex-col items-center justify-center bg-gradient-to-b from-white to-slate-50">
-          <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
-            <Rocket className="w-10 h-10 text-slate-400" />
+      <Card className="flex-1 flex flex-col overflow-hidden border-slate-200 shadow-sm">
+        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-slate-700 uppercase tracking-tight">
+              Rocket Telemetry
+            </span>
           </div>
-          <h2 className="font-semibold text-slate-700">
-            Rocket {selectedIndex + 1}
-          </h2>
-          <div className="text-xs text-slate-400 mt-1 font-mono">
-            ID: RKT-{selectedIndex.toString().padStart(3, "0")}
-          </div>
+          <span className="font-mono text-xs font-bold px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">
+            Rocket : {selectedIndex.toString() + 1}
+          </span>
         </div>
-        <AltitudeTape />
+
+        <div className="flex-1 relative bg-slate-950">
+          <RocketPreview />
+        </div>
       </Card>
 
-      {/* Middle: Physics Grid */}
-      <Card className="p-4 grid grid-cols-2 gap-2">
-        <MetricBox label="Vertical Vel" valueKey="vy" unit="m/s" />
-        <MetricBox label="Horizontal Vel" valueKey="vx" unit="m/s" />
-        <MetricBox label="Angle" valueKey="angle" unit="deg" />
-        <MetricBox label="Fuel" valueKey="fuelMass" unit="kg" />
-      </Card>
+      <StatsGrid />
 
-      {/* Bottom: Charts */}
-      <Card className="p-4">
-        <Tabs defaultValue="vy">
-          <TabsList className="flex gap-2 mb-4 border-b border-slate-100 pb-2">
+      <Card className="p-4 border-slate-200 shadow-sm bg-white">
+        <Tabs defaultValue="vy" className="w-full">
+          <TabsList className="grid grid-cols-3 gap-2 mb-4 bg-slate-100 p-1 rounded-lg">
             <TabsTrigger
               value="vy"
-              className="text-xs font-medium px-3 py-1 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 text-slate-500 hover:text-slate-700"
+              className="text-[10px] font-bold uppercase py-1.5 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm text-slate-500"
             >
-              Velocity Y
+              Vel Y
             </TabsTrigger>
             <TabsTrigger
               value="vx"
-              className="text-xs font-medium px-3 py-1 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 text-slate-500 hover:text-slate-700"
+              className="text-[10px] font-bold uppercase py-1.5 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm text-slate-500"
             >
-              Velocity X
+              Vel X
             </TabsTrigger>
             <TabsTrigger
               value="angle"
-              className="text-xs font-medium px-3 py-1 rounded-md data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 text-slate-500 hover:text-slate-700"
+              className="text-[10px] font-bold uppercase py-1.5 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm text-slate-500"
             >
-              Angle
+              Tilt
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="vy">
+          <TabsContent value="vy" className="mt-0 outline-none">
             <RealTimeChart
               dataKey="vy"
-              color="#0ea5e9"
+              color="#6366f1"
               label="Vertical Velocity"
             />
           </TabsContent>
-          <TabsContent value="vx">
+          <TabsContent value="vx" className="mt-0 outline-none">
             <RealTimeChart
               dataKey="vx"
               color="#8b5cf6"
               label="Horizontal Velocity"
             />
           </TabsContent>
-          <TabsContent value="angle">
+          <TabsContent value="angle" className="mt-0 outline-none">
             <RealTimeChart dataKey="angle" color="#f59e0b" label="Angle" />
           </TabsContent>
         </Tabs>

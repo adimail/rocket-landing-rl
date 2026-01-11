@@ -13,16 +13,14 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const uplotRef = useRef<uPlot | null>(null);
   const selectedIndex = useStore((s) => s.selectedRocketIndex);
-
-  // Buffers
-  const dataRef = useRef<[number[], number[]]>([[], []]);
+  const dataRef = useRef<[number[], (number | null)[]]>([[], []]);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const opts: uPlot.Options = {
       width: containerRef.current.clientWidth,
-      height: 120,
+      height: 140,
       series: [
         {},
         {
@@ -30,22 +28,20 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
           stroke: color,
           width: 2,
           points: { show: false },
+          fill: `${color}10`,
         },
       ],
       axes: [
         { show: false },
         {
           stroke: "#94a3b8",
-          grid: { stroke: "#f1f5f9" },
-          size: 30,
-          font: "10px monospace",
+          grid: { stroke: "#f1f5f9", width: 1 },
+          size: 40,
+          font: "10px JetBrains Mono",
         },
       ],
-      padding: [10, 0, 10, 0],
-      cursor: {
-        drag: { x: false, y: false },
-        points: { size: 6, fill: color },
-      },
+      padding: [12, 12, 12, 0],
+      cursor: { show: false },
     };
 
     uplotRef.current = new uPlot(opts, dataRef.current, containerRef.current);
@@ -58,28 +54,25 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
       ({ val, tick }) => {
         if (val === undefined || !uplotRef.current) return;
 
-        const xData = dataRef.current[0];
-        const yData = dataRef.current[1];
+        const [x, y] = dataRef.current;
+        x.push(tick);
+        y.push(val);
 
-        xData.push(tick);
-        yData.push(val);
-
-        // Keep last 300 points
-        if (xData.length > 300) {
-          xData.shift();
-          yData.shift();
+        if (x.length > 200) {
+          x.shift();
+          y.shift();
         }
 
-        uplotRef.current.setData(dataRef.current);
+        uplotRef.current.setData([x, y]);
       },
+      { fireImmediately: false },
     );
 
-    // Resize Observer
     const ro = new ResizeObserver((entries) => {
       if (uplotRef.current && entries[0]) {
         uplotRef.current.setSize({
           width: entries[0].contentRect.width,
-          height: 120,
+          height: 140,
         });
       }
     });
@@ -89,6 +82,7 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
       unsub();
       ro.disconnect();
       uplotRef.current?.destroy();
+      dataRef.current = [[], []];
     };
   }, [selectedIndex, dataKey, color, label]);
 

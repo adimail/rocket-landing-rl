@@ -79,7 +79,7 @@ export function Viewport() {
         <OrbitControls
           ref={controlsRef}
           makeDefault
-          maxPolarAngle={Math.PI / 2 - 0.05}
+          maxPolarAngle={Math.PI / 2 - 0.09}
           minDistance={20}
           maxDistance={1000}
           enablePan={true}
@@ -138,7 +138,7 @@ export function Viewport() {
           )}
         >
           <Zap className="w-4 h-4" />
-          <span>AI Agent</span>
+          <span>RL Agent</span>
         </button>
       </div>
     </div>

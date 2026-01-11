@@ -66,8 +66,8 @@ export function Rocket3D({ index }: { index: number }) {
   // RCS dimensions
   const rcsWidth = 0.3;
   const rcsHeight = 5.2;
-  const rcsOffsetX = 1.8; // Distance from center
-  const rcsOffsetY = 10.5; // Height on rocket body
+  const rcsOffsetX = 0.5; // Distance from center
+  const rcsOffsetY = 15.5; // Height on rocket body
 
   return (
     <group ref={groupRef}>
@@ -79,7 +79,7 @@ export function Rocket3D({ index }: { index: number }) {
       />
 
       {/* Main Engine Flame */}
-      <group ref={flameRef} position={[0, -3.2, 0]}>
+      <group ref={flameRef} position={[0, 0, 0]}>
         {/* Outer Flame */}
         <Cone
           args={[flameRadius, flameHeight, 8]}

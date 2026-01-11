@@ -48,7 +48,7 @@ export const useStore = create<SimulationStore>()(
     rewards: [],
 
     selectedRocketIndex: 0,
-    isAgentEnabled: false,
+    isAgentEnabled: true,
 
     setConnectionStatus: (status) => set({ status }),
     setLatency: (latency) => set({ latency }),
