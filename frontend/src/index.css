@@ -1,22 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #282828;
-  --color-fg: #ebdbb2;
-  --color-red: #cc241d;
-  --color-green: #98971a;
-  --color-yellow: #d79921;
-  --color-blue: #458588;
-  --color-purple: #b16286;
-  --color-aqua: #689d6a;
-  --color-orange: #d65d0e;
-  --color-gray: #a89984;
-
-  --font-mono: "monospace";
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 @layer base {
   body {
-    @apply bg-bg text-fg;
+    @apply antialiased;
   }
+}
+
+/* uPlot Tooltip Override */
+.u-tooltip {
+  @apply rounded-lg border border-slate-200 bg-white/95 shadow-lg backdrop-blur text-xs font-mono !important;
 }
