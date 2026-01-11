@@ -24,3 +24,8 @@ export const COLORS = {
   safe: "rgba(144, 238, 144, 0.2)",
   unsafe: "rgba(255, 122, 122, 0.2)",
 };
+
+export const LANDING_STATUSES = {
+  SUCCESS: ["safe", "good", "perfect", "landed"],
+  FAILURE: ["unsafe", "crash", "destroy", "failed"],
+};

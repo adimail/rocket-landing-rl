@@ -1,6 +1,7 @@
 import React from "react";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function MetricCard({
   label,
@@ -14,6 +15,8 @@ function MetricCard({
   isReward?: boolean;
 }) {
   const selectedIndex = useStore((s) => s.selectedRocketIndex);
+  const status = useStore((s) => s.status);
+  const hasData = useStore((s) => s.rockets.length > 0);
   const ref = React.useRef<HTMLSpanElement>(null);
 
   React.useEffect(() => {
@@ -37,6 +40,17 @@ function MetricCard({
       }
     });
   }, [selectedIndex, valueKey, isReward]);
+
+  if (status === "connecting" || !hasData) {
+    return (
+      <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg">
+        <div className="text-[8px] font-black text-yellow-500/30 uppercase tracking-widest mb-1">
+          {label}
+        </div>
+        <Skeleton className="h-4 w-12 bg-slate-800" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg">

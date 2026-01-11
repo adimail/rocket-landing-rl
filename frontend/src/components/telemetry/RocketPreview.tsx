@@ -9,6 +9,7 @@ import {
 import * as THREE from "three";
 import { useStore } from "@/lib/store";
 import { AltitudeTape } from "./AltitudeTape";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 
 function RocketModel() {
@@ -52,7 +53,6 @@ function RocketModel() {
   return (
     <group ref={groupRef}>
       <primitive object={clone} scale={0.002} rotation={[0, Math.PI / 2, 0]} />
-
       <group ref={flameRef} position={[0, 0, 0]}>
         <Cone
           args={[0.5, 3, 8]}
@@ -69,7 +69,6 @@ function RocketModel() {
           <meshBasicMaterial color="#fffbeb" />
         </Cone>
       </group>
-
       <group
         ref={rcsLeftRef}
         position={[2, 11, 0]}
@@ -79,7 +78,6 @@ function RocketModel() {
           <meshBasicMaterial color="#fff" transparent opacity={0.6} />
         </Cone>
       </group>
-
       <group
         ref={rcsRightRef}
         position={[-2, 11, 0]}
@@ -94,6 +92,8 @@ function RocketModel() {
 }
 
 export function RocketPreview() {
+  const status = useStore((s) => s.status);
+  const hasData = useStore((s) => s.rockets.length > 0);
   const selectedIndex = useStore((s) => s.selectedRocketIndex);
   const [reward, setReward] = useState(0);
 
@@ -104,6 +104,18 @@ export function RocketPreview() {
     );
   }, [selectedIndex]);
 
+  if (status === "connecting" || !hasData) {
+    return (
+      <div className="w-full h-full relative bg-slate-950 flex items-center justify-center">
+        <Skeleton className="w-24 h-48 bg-slate-900/50 rounded-full" />
+        <div className="absolute bottom-4 left-4 space-y-2">
+          <Skeleton className="h-2 w-16 bg-slate-800" />
+          <Skeleton className="h-6 w-24 bg-slate-800" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full relative">
       <Canvas>
@@ -111,7 +123,6 @@ export function RocketPreview() {
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1.5} />
         <Environment preset="night" />
-
         <Suspense fallback={null}>
           <RocketModel />
         </Suspense>

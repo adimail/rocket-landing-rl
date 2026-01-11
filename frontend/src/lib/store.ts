@@ -53,7 +53,7 @@ interface SimulationStore {
 
 export const useStore = create<SimulationStore>()(
   subscribeWithSelector((set) => ({
-    status: "disconnected",
+    status: "connecting",
     latency: 0,
     speed: 1.0,
     tick: 0,

@@ -11,7 +11,9 @@ import {
 } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useThrottle } from "@/hooks/useThrottle";
+import { LANDING_STATUSES } from "@/lib/constants";
 import type { RocketState } from "@/types/simulation";
 import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 
@@ -25,6 +27,7 @@ interface TableRow {
 const columnHelper = createColumnHelper<TableRow>();
 
 export function FleetTable() {
+  const status = useStore((s) => s.status);
   const rawRockets = useStore((s) => s.rockets);
   const rawLandingStatus = useStore((s) => s.landingStatus);
   const rawRewards = useStore((s) => s.rewards);
@@ -66,30 +69,20 @@ export function FleetTable() {
             "default";
           let text = "Flying";
 
-          const status = rawStatus?.toLowerCase();
-          if (status) {
-            if (
-              ["safe", "good", "perfect", "landed"].some((s) =>
-                status.includes(s),
-              )
-            ) {
+          const statusStr = rawStatus?.toLowerCase();
+          if (statusStr) {
+            if (LANDING_STATUSES.SUCCESS.some((s) => statusStr.includes(s))) {
               variant = "success";
               text = "Landed";
             } else if (
-              ["unsafe", "crash", "destroy", "failed"].some((s) =>
-                status.includes(s),
-              )
+              LANDING_STATUSES.FAILURE.some((s) => statusStr.includes(s))
             ) {
               variant = "destructive";
               text = "Crashed";
             } else {
               text = rawStatus || "Unknown";
             }
-          } else if (
-            rocket.y < 1.0 &&
-            Math.abs(rocket.vy) < 0.5 &&
-            Math.abs(rocket.vx) < 0.5
-          ) {
+          } else if (rocket.y < 1.0 && Math.abs(rocket.vy) < 0.5) {
             variant = "success";
             text = "Landed";
           }
@@ -158,9 +151,7 @@ export function FleetTable() {
   const table = useReactTable({
     data: tableData,
     columns,
-    state: {
-      sorting,
-    },
+    state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -175,6 +166,25 @@ export function FleetTable() {
     estimateSize: () => 48,
     overscan: 10,
   });
+
+  if (
+    status === "connecting" ||
+    (status === "connected" && rockets.length === 0)
+  ) {
+    return (
+      <div className="h-full flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-6">
+        <div className="flex items-center justify-between mb-6">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-5 w-32" />
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

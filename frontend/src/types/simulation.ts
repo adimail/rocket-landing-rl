@@ -39,4 +39,8 @@ export interface WebSocketMessage {
   speed?: number;
 }
 
-export type ConnectionStatus = "connected" | "disconnected" | "connecting";
+export type ConnectionStatus =
+  | "connected"
+  | "disconnected"
+  | "connecting"
+  | "error";
