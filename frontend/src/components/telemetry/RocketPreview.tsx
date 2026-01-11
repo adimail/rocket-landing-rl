@@ -27,7 +27,12 @@ function RocketPreviewModel() {
 
   return (
     <group ref={groupRef}>
-      <RocketMesh getAction={getAction} scale={0.002} config={PREVIEW_CONFIG} />
+      <RocketMesh
+        getAction={getAction}
+        scale={0.002}
+        config={PREVIEW_CONFIG}
+        isHighlighted={true}
+      />
     </group>
   );
 }

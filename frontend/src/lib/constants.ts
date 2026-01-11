@@ -26,6 +26,6 @@ export const COLORS = {
 };
 
 export const LANDING_STATUSES = {
-  SUCCESS: ["safe", "good", "perfect", "landed"],
+  SUCCESS: ["safe", "good", "perfect", "landed", "ok"],
   FAILURE: ["unsafe", "crash", "destroy", "failed"],
 };

@@ -56,6 +56,7 @@ interface SimulationStore {
   selectedRocketIndex: number;
   isAgentEnabled: boolean;
   activeCharts: string[];
+  isPlaying: boolean;
 
   setConnectionStatus: (status: ConnectionStatus) => void;
   setLatency: (ms: number) => void;
@@ -70,6 +71,7 @@ interface SimulationStore {
   toggleAgent: () => void;
   toggleChart: (key: string) => void;
   resetHistory: () => void;
+  setIsPlaying: (playing: boolean) => void;
 }
 
 export const useStore = create<SimulationStore>()(
@@ -85,6 +87,7 @@ export const useStore = create<SimulationStore>()(
     selectedRocketIndex: 0,
     isAgentEnabled: true,
     activeCharts: ["vy", "vx", "angle", "reward"],
+    isPlaying: false,
 
     setConnectionStatus: (status) => set({ status }),
     setLatency: (latency) => set({ latency }),
@@ -143,5 +146,6 @@ export const useStore = create<SimulationStore>()(
       });
       set({ tick: 0 });
     },
+    setIsPlaying: (isPlaying) => set({ isPlaying }),
   })),
 );

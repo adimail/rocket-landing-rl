@@ -3,9 +3,11 @@ import { Viewport } from "@/components/simulation/Viewport";
 import { TelemetryPanel } from "@/components/telemetry/TelemetryPanel";
 import { FleetTable } from "@/components/fleet/FleetTable";
 import { useTelemetryBridge } from "@/hooks/useTelemetryBridge";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 function App() {
   useTelemetryBridge();
+  useKeyboardShortcuts();
 
   return (
     <div className="h-screen w-screen bg-slate-950 flex flex-col font-sans text-slate-200 overflow-hidden">

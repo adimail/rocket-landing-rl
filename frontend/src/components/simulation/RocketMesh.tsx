@@ -7,6 +7,7 @@ import type { RocketAction } from "@/types/simulation";
 const FLAME_COLOR_CORE = "#ffedd5";
 const FLAME_COLOR_OUTER = "#f59e0b";
 const COLD_GAS_COLOR = "#fff";
+const HIGHLIGHT_COLOR = "#3b82f6";
 
 export interface RocketVisualConfig {
   flame: {
@@ -30,12 +31,14 @@ interface RocketMeshProps {
   getAction: () => RocketAction | undefined;
   scale?: number;
   config?: Partial<RocketVisualConfig>;
+  isHighlighted?: boolean;
 }
 
 export function RocketMesh({
   getAction,
   scale = 1,
   config = {},
+  isHighlighted = false,
 }: RocketMeshProps) {
   const flameRef = useRef<THREE.Group>(null);
   const rcsLeftRef = useRef<THREE.Group>(null);
@@ -44,7 +47,6 @@ export function RocketMesh({
   const { scene } = useGLTF("/assets/booster.glb");
   const clone = useMemo(() => scene.clone(), [scene]);
 
-  // Merge defaults with provided config
   const settings = {
     flame: { ...DEFAULT_CONFIG.flame, ...config.flame },
     rcs: { ...DEFAULT_CONFIG.rcs, ...config.rcs },
@@ -77,6 +79,27 @@ export function RocketMesh({
 
   return (
     <group>
+      {isHighlighted && (
+        <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]}>
+          <mesh>
+            <torusGeometry args={[settings.flame.radius * 8, 0.15, 16, 64]} />
+            <meshBasicMaterial
+              color={HIGHLIGHT_COLOR}
+              transparent
+              opacity={0.8}
+            />
+          </mesh>
+          <mesh>
+            <ringGeometry args={[0, settings.flame.radius * 8, 64]} />
+            <meshBasicMaterial
+              color={HIGHLIGHT_COLOR}
+              transparent
+              opacity={0.15}
+            />
+          </mesh>
+        </group>
+      )}
+
       <primitive
         object={clone}
         scale={scale}

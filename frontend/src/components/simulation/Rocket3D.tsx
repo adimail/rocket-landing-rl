@@ -8,6 +8,8 @@ const ROCKET_SCALE = 0.003;
 
 export function Rocket3D({ index }: { index: number }) {
   const groupRef = useRef<THREE.Group>(null);
+  const selectedIndex = useStore((s) => s.selectedRocketIndex);
+  const isHighlighted = index === selectedIndex;
 
   useFrame(() => {
     const state = useStore.getState().rockets[index];
@@ -21,7 +23,11 @@ export function Rocket3D({ index }: { index: number }) {
 
   return (
     <group ref={groupRef}>
-      <RocketMesh getAction={getAction} scale={ROCKET_SCALE} />
+      <RocketMesh
+        getAction={getAction}
+        scale={ROCKET_SCALE}
+        isHighlighted={isHighlighted}
+      />
     </group>
   );
 }

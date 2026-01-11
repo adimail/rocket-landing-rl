@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { useSocket } from "@/hooks/useSocket";
 import { Play, Pause, RotateCcw, Zap } from "lucide-react";
@@ -11,9 +10,10 @@ interface SimulationHUDProps {
 export function SimulationHUD({ onResetCamera }: SimulationHUDProps) {
   const status = useStore((s) => s.status);
   const isAgentEnabled = useStore((s) => s.isAgentEnabled);
+  const isPlaying = useStore((s) => s.isPlaying);
+  const setIsPlaying = useStore((s) => s.setIsPlaying);
   const toggleAgent = useStore((s) => s.toggleAgent);
   const { sendCommand } = useSocket();
-  const [isPlaying, setIsPlaying] = useState(false);
 
   const handlePlay = () => {
     setIsPlaying(true);
