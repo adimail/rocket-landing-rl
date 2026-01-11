@@ -63,13 +63,13 @@ export function RocketMesh({
     const coldGas = action?.coldGas || 0;
 
     if (rcsLeftRef.current) {
-      rcsLeftRef.current.visible = coldGas < -0.1;
+      rcsLeftRef.current.visible = coldGas > -0.1;
       const s = Math.abs(coldGas);
       rcsLeftRef.current.scale.set(s, s, s);
     }
 
     if (rcsRightRef.current) {
-      rcsRightRef.current.visible = coldGas > 0.1;
+      rcsRightRef.current.visible = coldGas < 0.1;
       const s = Math.abs(coldGas);
       rcsRightRef.current.scale.set(s, s, s);
     }

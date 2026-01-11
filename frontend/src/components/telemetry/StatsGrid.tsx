@@ -29,7 +29,7 @@ function MetricCard({
         ref.current.innerText = val.toFixed(2);
         if (isReward) {
           ref.current.className = cn(
-            "font-mono text-sm font-bold",
+            "font-mono text-lg font-bold tracking-tight",
             val > 0
               ? "text-emerald-400"
               : val < 0
@@ -43,25 +43,28 @@ function MetricCard({
 
   if (status === "connecting" || !hasData) {
     return (
-      <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg">
-        <div className="text-[8px] font-black text-yellow-500/30 uppercase tracking-widest mb-1">
+      <div className="bg-slate-950 border border-slate-800 p-3 rounded-lg flex flex-col justify-between h-16">
+        <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">
           {label}
         </div>
-        <Skeleton className="h-4 w-12 bg-slate-800" />
+        <Skeleton className="h-5 w-16 bg-slate-800" />
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-900 border border-slate-800 p-2 rounded-lg">
-      <div className="text-[8px] font-black text-yellow-500/50 uppercase tracking-widest mb-1">
+    <div className="bg-slate-950 border border-slate-800 p-3 rounded-lg flex flex-col justify-between h-16 transition-colors hover:border-slate-700">
+      <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">
         {label}
       </div>
-      <div className="flex items-baseline gap-1">
-        <span ref={ref} className="font-mono text-sm font-bold text-yellow-400">
+      <div className="flex items-baseline gap-1.5">
+        <span
+          ref={ref}
+          className="font-mono text-lg font-bold text-slate-100 tracking-tight"
+        >
           0.00
         </span>
-        <span className="text-[8px] font-bold text-slate-500 uppercase">
+        <span className="text-[9px] font-bold text-slate-600 uppercase">
           {unit}
         </span>
       </div>

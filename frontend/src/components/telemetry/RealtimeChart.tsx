@@ -24,7 +24,7 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
 
     const opts: uPlot.Options = {
       width: containerRef.current.clientWidth,
-      height: 120,
+      height: 100,
       series: [
         {},
         {
@@ -32,21 +32,33 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
           stroke: color,
           width: 2,
           points: { show: false },
-          fill: `${color}15`,
+          fill: (u, _seriesIdx) => {
+            const ctx = u.ctx;
+            const gradient = ctx.createLinearGradient(0, 0, 0, u.bbox.height);
+            gradient.addColorStop(0, `${color}33`);
+            gradient.addColorStop(1, `${color}00`);
+            return gradient;
+          },
         },
       ],
       axes: [
         { show: false },
         {
-          stroke: "#475569",
-          grid: { stroke: "#f1f5f9", width: 1 },
-          size: 45,
+          stroke: "#64748b",
+          grid: { stroke: "#1e293b", width: 1 },
+          size: 40,
           font: "10px JetBrains Mono",
           values: (_self, ticks) => ticks.map((t) => t.toFixed(1)),
         },
       ],
-      padding: [8, 12, 8, 0],
-      cursor: { show: false },
+      padding: [10, 10, 10, 0],
+      cursor: {
+        show: true,
+        points: { show: false },
+        drag: { x: false, y: false },
+        sync: { key: "charts" },
+      },
+      legend: { show: false },
     };
 
     uplotRef.current = new uPlot(
@@ -72,7 +84,7 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
       if (uplotRef.current && entries[0]) {
         uplotRef.current.setSize({
           width: entries[0].contentRect.width,
-          height: 120,
+          height: 100,
         });
       }
     });

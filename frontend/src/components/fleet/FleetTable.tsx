@@ -81,7 +81,7 @@ export function FleetTable() {
         id: "altitude",
         header: "Alt (m)",
         cell: (info) => (
-          <div className="text-right font-mono pr-4">
+          <div className="text-right font-mono pr-4 text-slate-300">
             {info.getValue().toFixed(1)}
           </div>
         ),
@@ -91,7 +91,7 @@ export function FleetTable() {
         id: "velocity",
         header: "Vel (m/s)",
         cell: (info) => (
-          <div className="text-right font-mono pr-4">
+          <div className="text-right font-mono pr-4 text-slate-300">
             {info.getValue().toFixed(1)}
           </div>
         ),
@@ -106,10 +106,10 @@ export function FleetTable() {
               className={cn(
                 "text-right font-mono font-bold pr-4",
                 val > 0
-                  ? "text-emerald-600"
+                  ? "text-emerald-400"
                   : val < 0
-                    ? "text-red-500"
-                    : "text-slate-400",
+                    ? "text-red-400"
+                    : "text-slate-500",
               )}
             >
               {val > 0 ? "+" : ""}
@@ -123,9 +123,9 @@ export function FleetTable() {
         id: "fuel",
         header: "Fuel",
         cell: (info) => (
-          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[80px] mr-4">
+          <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden min-w-[80px] mr-4">
             <div
-              className="h-full bg-slate-400 transition-all duration-300"
+              className="h-full bg-slate-500 transition-all duration-300"
               style={{ width: `${(info.getValue() / 400000) * 100}%` }}
             />
           </div>
@@ -150,7 +150,7 @@ export function FleetTable() {
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 48,
+    estimateSize: () => 44,
     overscan: 10,
   });
 
@@ -159,14 +159,14 @@ export function FleetTable() {
     (status === "connected" && rockets.length === 0)
   ) {
     return (
-      <div className="h-full flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-6">
+      <div className="h-full flex flex-col bg-slate-900 rounded-xl border border-slate-800 shadow-sm overflow-hidden p-6">
         <div className="flex items-center justify-between mb-6">
-          <Skeleton className="h-5 w-48" />
-          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-5 w-48 bg-slate-800" />
+          <Skeleton className="h-5 w-32 bg-slate-800" />
         </div>
         <div className="space-y-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
+            <Skeleton key={i} className="h-10 w-full bg-slate-800" />
           ))}
         </div>
       </div>
@@ -174,8 +174,8 @@ export function FleetTable() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="bg-slate-50/50 border-b border-slate-100">
+    <div className="h-full flex flex-col bg-slate-900 rounded-xl border border-slate-800 shadow-xl overflow-hidden">
+      <div className="bg-slate-950 border-b border-slate-800">
         {table.getHeaderGroups().map((headerGroup) => (
           <div key={headerGroup.id} className="flex items-center px-4 py-3">
             {headerGroup.headers.map((header) => {
@@ -186,8 +186,8 @@ export function FleetTable() {
                 <div
                   key={header.id}
                   className={cn(
-                    "text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1 select-none",
-                    isSortable && "cursor-pointer hover:text-slate-900",
+                    "text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 select-none",
+                    isSortable && "cursor-pointer hover:text-slate-300",
                   )}
                   style={{
                     width: header.getSize() === 150 ? "auto" : header.getSize(),
@@ -200,7 +200,7 @@ export function FleetTable() {
                     header.getContext(),
                   )}
                   {isSortable && (
-                    <span className="text-slate-400">
+                    <span className="text-slate-600">
                       {sortDirection === "asc" ? (
                         <ChevronUp className="w-3 h-3" />
                       ) : sortDirection === "desc" ? (
@@ -217,7 +217,10 @@ export function FleetTable() {
         ))}
       </div>
 
-      <div ref={parentRef} className="flex-1 overflow-auto">
+      <div
+        ref={parentRef}
+        className="flex-1 overflow-auto bg-slate-900 custom-scrollbar"
+      >
         <div
           style={{
             height: `${rowVirtualizer.getTotalSize()}px`,
@@ -234,8 +237,9 @@ export function FleetTable() {
                 key={row.id}
                 onClick={() => setSelectedIndex(row.original.index)}
                 className={cn(
-                  "absolute top-0 left-0 w-full flex items-center px-4 h-12 border-b border-slate-50 cursor-pointer transition-colors hover:bg-slate-50",
-                  isSelected && "bg-indigo-50/50 hover:bg-indigo-50",
+                  "absolute top-0 left-0 w-full flex items-center px-4 h-[44px] border-b border-slate-800/50 cursor-pointer transition-all hover:bg-slate-800/50",
+                  isSelected &&
+                    "bg-blue-500/10 border-l-2 border-l-blue-500 hover:bg-blue-500/15",
                 )}
                 style={{
                   transform: `translateY(${virtualRow.start}px)`,
@@ -244,7 +248,7 @@ export function FleetTable() {
                 {row.getVisibleCells().map((cell) => (
                   <div
                     key={cell.id}
-                    className="text-sm text-slate-700"
+                    className="text-sm"
                     style={{
                       width:
                         cell.column.getSize() === 150

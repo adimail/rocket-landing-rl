@@ -12,17 +12,17 @@ export function Badge({
   className,
 }: BadgeProps) {
   const variants = {
-    default: "bg-slate-100 text-slate-900",
-    success: "bg-yellow-400 text-black border-yellow-500 border",
-    destructive: "bg-red-500 text-white border-red-600 border",
-    warning: "bg-yellow-200 text-yellow-800 border-yellow-300 border",
-    outline: "border border-yellow-400 text-yellow-600",
+    default: "bg-slate-800 text-slate-300 border border-slate-700",
+    success: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 border",
+    destructive: "bg-red-500/10 text-red-400 border-red-500/20 border",
+    warning: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20 border",
+    outline: "border border-slate-700 text-slate-400",
   };
 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black uppercase cursor-pointer",
+        "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
         variants[variant],
         className,
       )}

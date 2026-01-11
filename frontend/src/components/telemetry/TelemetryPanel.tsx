@@ -27,26 +27,26 @@ export function TelemetryPanel() {
   const isLoading = status === "connecting" || !hasData;
 
   return (
-    <div className="h-full rounded-xl flex flex-col overflow-hidden bg-slate-50 border-l border-slate-200">
-      <div className="sticky top-0 z-20 bg-slate-50">
+    <div className="h-full rounded-xl flex flex-col overflow-hidden bg-slate-900 border border-slate-800 shadow-xl">
+      <div className="sticky top-0 z-20 bg-slate-900">
         <div className="h-64 relative bg-slate-950 border-b border-slate-800">
           <RocketPreview />
           <div className="absolute top-4 left-4 flex items-center gap-2 pointer-events-none">
             {isLoading ? (
               <Skeleton className="h-6 w-40 bg-slate-800" />
             ) : (
-              <span className="font-mono text-[10px] font-bold px-2 py-1 bg-yellow-400 text-black rounded shadow-lg uppercase">
-                Telemetry Target: #{selectedIndex + 1}
+              <span className="font-mono text-[10px] font-bold px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded uppercase tracking-wider backdrop-blur-md">
+                Target: #{selectedIndex + 1}
               </span>
             )}
           </div>
         </div>
 
-        <div className="p-4 border-b border-slate-200 shadow-sm bg-white">
+        <div className="p-4 border-b border-slate-800 shadow-sm bg-slate-900">
           <StatsGrid />
         </div>
 
-        <div className="p-2 bg-slate-100 border-b border-slate-200 flex flex-wrap gap-1.5">
+        <div className="p-2 bg-slate-950/30 border-b border-slate-800 flex flex-wrap gap-1.5">
           {AVAILABLE_METRICS.map((m) => (
             <button
               key={m.id}
@@ -55,8 +55,8 @@ export function TelemetryPanel() {
               className={cn(
                 "px-2 py-1 rounded text-[9px] font-bold uppercase border cursor-pointer transition-all",
                 activeCharts.includes(m.id)
-                  ? "bg-yellow-400 border-yellow-500 text-black shadow-sm"
-                  : "bg-white border-slate-200 text-slate-400 hover:border-slate-300",
+                  ? "bg-yellow-500 text-black border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.4)]"
+                  : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300",
                 isLoading && "opacity-50 cursor-not-allowed",
               )}
             >
@@ -66,30 +66,32 @@ export function TelemetryPanel() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-slate-900">
         {isLoading
           ? Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i} className="p-4 border-slate-200 bg-white">
-                <Skeleton className="h-3 w-20 mb-4" />
-                <Skeleton className="h-24 w-full" />
+              <Card key={i} className="p-4 border-slate-800 bg-slate-950/50">
+                <Skeleton className="h-3 w-20 mb-4 bg-slate-800" />
+                <Skeleton className="h-24 w-full bg-slate-800" />
               </Card>
             ))
           : AVAILABLE_METRICS.filter((m) => activeCharts.includes(m.id)).map(
               (m) => (
                 <Card
                   key={m.id}
-                  className="p-2 border-slate-200 bg-white overflow-hidden"
+                  className="p-0 border-slate-800 bg-slate-950/30 overflow-hidden"
                 >
-                  <div className="px-2 mb-1 flex justify-between items-center">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">
+                  <div className="px-3 py-2 border-b border-slate-800/50 flex justify-between items-center bg-slate-950/50">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                       {m.label}
                     </span>
                   </div>
-                  <RealTimeChart
-                    dataKey={m.id as any}
-                    color={m.id === "reward" ? "#10b981" : "#facc15"}
-                    label={m.label}
-                  />
+                  <div className="p-2">
+                    <RealTimeChart
+                      dataKey={m.id as any}
+                      color={m.id === "reward" ? "#34d399" : "#38bdf8"}
+                      label={m.label}
+                    />
+                  </div>
                 </Card>
               ),
             )}
