@@ -48,8 +48,8 @@ export function AltitudeTape() {
         })}
       </div>
 
-      <div className="absolute top-1/2 left-0 right-0 h-px bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] z-10">
-        <div className="absolute -top-2.5 right-1 bg-indigo-500 text-white text-[10px] px-1.5 py-0.5 rounded-sm font-bold font-mono">
+      <div className="absolute top-1/2 left-0 right-0 h-px bg-yellow-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] z-10">
+        <div className="absolute -top-2.5 right-1 bg-yellow-500 text-black text-[10px] px-1.5 py-0.5 rounded-sm font-bold font-mono">
           {alt.toFixed(1)}
         </div>
       </div>

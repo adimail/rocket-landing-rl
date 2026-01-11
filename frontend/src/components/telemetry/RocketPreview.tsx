@@ -1,4 +1,4 @@
-import { Suspense, useRef, useMemo } from "react";
+import { Suspense, useRef, useMemo, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
   useGLTF,
@@ -9,6 +9,7 @@ import {
 import * as THREE from "three";
 import { useStore } from "@/lib/store";
 import { AltitudeTape } from "./AltitudeTape";
+import { cn } from "@/lib/utils";
 
 function RocketModel() {
   const groupRef = useRef<THREE.Group>(null);
@@ -93,6 +94,16 @@ function RocketModel() {
 }
 
 export function RocketPreview() {
+  const selectedIndex = useStore((s) => s.selectedRocketIndex);
+  const [reward, setReward] = useState(0);
+
+  useEffect(() => {
+    return useStore.subscribe(
+      (state) => state.rewards[selectedIndex],
+      (val) => setReward(val || 0),
+    );
+  }, [selectedIndex]);
+
   return (
     <div className="w-full h-full relative">
       <Canvas>
@@ -105,6 +116,26 @@ export function RocketPreview() {
           <RocketModel />
         </Suspense>
       </Canvas>
+
+      <div className="absolute bottom-4 left-4 flex flex-col gap-1">
+        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+          Step Reward
+        </span>
+        <div
+          className={cn(
+            "font-mono text-xl font-black tabular-nums drop-shadow-md",
+            reward > 0
+              ? "text-emerald-400"
+              : reward < 0
+                ? "text-red-400"
+                : "text-white",
+          )}
+        >
+          {reward > 0 ? "+" : ""}
+          {reward.toFixed(2)}
+        </div>
+      </div>
+
       <AltitudeTape />
     </div>
   );

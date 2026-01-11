@@ -5,10 +5,12 @@ import type { WebSocketMessage, RocketAction } from "@/types/simulation";
 
 export function useSocket() {
   const socketRef = useRef<WebSocket | null>(null);
-  const { setConnectionStatus, updateSimulation, setSpeed } = useStore();
+  const { setConnectionStatus, updateSimulation, setSpeed, resetHistory } =
+    useStore();
   const lastPingRef = useRef<number>(0);
 
   const sendCommand = (command: string, payload?: object) => {
+    if (command === "restart") resetHistory();
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify({ command, ...payload }));
     }
@@ -46,16 +48,14 @@ export function useSocket() {
       ws.onmessage = (event) => {
         try {
           const data: WebSocketMessage = JSON.parse(event.data);
-
           if (data.status === "pong") {
-            const latency = performance.now() - lastPingRef.current;
-            useStore.getState().setLatency(latency);
+            useStore
+              .getState()
+              .setLatency(performance.now() - lastPingRef.current);
             return;
           }
-
-          if (data.speed !== undefined) {
-            setSpeed(data.speed);
-          }
+          if (data.speed !== undefined) setSpeed(data.speed);
+          if (data.restart) resetHistory();
 
           let states = data.state;
           let actions = data.action;
@@ -77,12 +77,11 @@ export function useSocket() {
     };
 
     connect();
-
     return () => {
       clearInterval(pingInterval);
       socketRef.current?.close();
     };
-  }, [setConnectionStatus, updateSimulation, setSpeed]);
+  }, [setConnectionStatus, updateSimulation, setSpeed, resetHistory]);
 
   return { sendCommand, sendAction };
 }

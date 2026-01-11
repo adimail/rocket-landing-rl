@@ -7,6 +7,7 @@ export interface RocketState {
   ay: number;
   angle: number;
   angularVelocity: number;
+  angularAcceleration: number;
   mass: number;
   fuelMass: number;
   speed: number;

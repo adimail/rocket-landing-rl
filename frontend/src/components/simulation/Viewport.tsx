@@ -92,14 +92,14 @@ export function Viewport() {
         {!isPlaying ? (
           <button
             onClick={handlePlay}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+            className="p-2 hover:bg-white/20 rounded-full cursor-pointer"
           >
             <Play className="w-5 h-5 text-white" fill="currentColor" />
           </button>
         ) : (
           <button
             onClick={handlePause}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+            className="p-2 hover:bg-white/20 rounded-full cursor-pointer"
           >
             <Pause className="w-5 h-5 text-white" fill="currentColor" />
           </button>
@@ -109,7 +109,7 @@ export function Viewport() {
 
         <button
           onClick={handleRestart}
-          className="p-2 hover:bg-white/20 rounded-full transition-colors"
+          className="p-2 hover:bg-white/20 rounded-full cursor-pointer"
         >
           <RotateCcw className="w-5 h-5 text-white" />
         </button>
@@ -118,7 +118,7 @@ export function Viewport() {
 
         <button
           onClick={moveCameraToFrontAllRockets}
-          className="p-2 hover:bg-white/20 rounded-full transition-colors"
+          className="p-2 hover:bg-white/20 rounded-full cursor-pointer"
         >
           <span className="text-sm text-white">Front View</span>
         </button>
@@ -131,9 +131,9 @@ export function Viewport() {
             sendCommand("toggle_agent");
           }}
           className={cn(
-            "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+            "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer",
             isAgentEnabled
-              ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
+              ? "bg-yellow-500 text-black shadow-lg shadow-yellow-500/30"
               : "hover:bg-white/20 text-slate-300",
           )}
         >
