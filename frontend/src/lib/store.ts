@@ -6,22 +6,81 @@ import type {
   ConnectionStatus,
 } from "@/types/simulation";
 
+export class RingBuffer {
+  private buffer: Float64Array;
+  private capacity: number;
+  private count: number = 0;
+  private head: number = 0;
+
+  constructor(capacity: number) {
+    this.capacity = capacity;
+    this.buffer = new Float64Array(capacity);
+  }
+
+  push(val: number) {
+    this.buffer[this.head] = val;
+    this.head = (this.head + 1) % this.capacity;
+    if (this.count < this.capacity) this.count++;
+  }
+
+  toArray(): Float64Array {
+    if (this.count < this.capacity) {
+      return this.buffer.slice(0, this.count);
+    }
+    const result = new Float64Array(this.capacity);
+    const p1 = this.buffer.subarray(this.head, this.capacity);
+    const p2 = this.buffer.subarray(0, this.head);
+    result.set(p1);
+    result.set(p2, p1.length);
+    return result;
+  }
+
+  clear() {
+    this.count = 0;
+    this.head = 0;
+  }
+
+  get length() {
+    return this.count;
+  }
+}
+
 export interface TelemetryHistory {
   [rocketIndex: number]: {
-    ticks: number[];
-    vy: number[];
-    vx: number[];
-    ay: number[];
-    ax: number[];
-    angle: number[];
-    angularVelocity: number[];
-    angularAcceleration: number[];
-    speed: number[];
-    reward: number[];
+    ticks: RingBuffer;
+    vy: RingBuffer;
+    vx: RingBuffer;
+    ay: RingBuffer;
+    ax: RingBuffer;
+    angle: RingBuffer;
+    angularVelocity: RingBuffer;
+    angularAcceleration: RingBuffer;
+    speed: RingBuffer;
+    reward: RingBuffer;
   };
 }
 
 export const telemetryHistory: TelemetryHistory = {};
+
+const HISTORY_SIZE = 1000;
+
+function initHistory(index: number) {
+  if (!telemetryHistory[index]) {
+    telemetryHistory[index] = {
+      ticks: new RingBuffer(HISTORY_SIZE),
+      vy: new RingBuffer(HISTORY_SIZE),
+      vx: new RingBuffer(HISTORY_SIZE),
+      ay: new RingBuffer(HISTORY_SIZE),
+      ax: new RingBuffer(HISTORY_SIZE),
+      angle: new RingBuffer(HISTORY_SIZE),
+      angularVelocity: new RingBuffer(HISTORY_SIZE),
+      angularAcceleration: new RingBuffer(HISTORY_SIZE),
+      speed: new RingBuffer(HISTORY_SIZE),
+      reward: new RingBuffer(HISTORY_SIZE),
+    };
+  }
+  return telemetryHistory[index];
+}
 
 interface SimulationStore {
   status: ConnectionStatus;
@@ -75,21 +134,7 @@ export const useStore = create<SimulationStore>()(
 
         if (data.states) {
           data.states.forEach((s, i) => {
-            if (!telemetryHistory[i]) {
-              telemetryHistory[i] = {
-                ticks: [],
-                vy: [],
-                vx: [],
-                ay: [],
-                ax: [],
-                angle: [],
-                angularVelocity: [],
-                angularAcceleration: [],
-                speed: [],
-                reward: [],
-              };
-            }
-            const h = telemetryHistory[i];
+            const h = initHistory(i);
             h.ticks.push(newTick);
             h.vy.push(s.vy);
             h.vx.push(s.vx);
@@ -100,19 +145,6 @@ export const useStore = create<SimulationStore>()(
             h.angularAcceleration.push(s.angularAcceleration);
             h.speed.push(s.speed);
             h.reward.push(data.rewards?.[i] || 0);
-
-            if (h.ticks.length > 1000) {
-              h.ticks.shift();
-              h.vy.shift();
-              h.vx.shift();
-              h.ay.shift();
-              h.ax.shift();
-              h.angle.shift();
-              h.angularVelocity.shift();
-              h.angularAcceleration.shift();
-              h.speed.shift();
-              h.reward.shift();
-            }
           });
         }
 
@@ -135,8 +167,17 @@ export const useStore = create<SimulationStore>()(
           : [...state.activeCharts, key],
       })),
     resetHistory: () => {
-      Object.keys(telemetryHistory).forEach((key) => {
-        delete telemetryHistory[Number(key)];
+      Object.values(telemetryHistory).forEach((h) => {
+        h.ticks.clear();
+        h.vy.clear();
+        h.vx.clear();
+        h.ay.clear();
+        h.ax.clear();
+        h.angle.clear();
+        h.angularVelocity.clear();
+        h.angularAcceleration.clear();
+        h.speed.clear();
+        h.reward.clear();
       });
       set({ tick: 0 });
     },

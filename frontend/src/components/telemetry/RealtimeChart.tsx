@@ -18,9 +18,10 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
     if (!containerRef.current) return;
 
     const history = telemetryHistory[selectedIndex];
-    const initialTicks = history?.ticks || [];
+    // Convert RingBuffer to array for initial render
+    const initialTicks = history?.ticks.toArray() || [];
     const initialData =
-      (history?.[dataKey as keyof typeof history] as number[]) || [];
+      history?.[dataKey as keyof typeof history]?.toArray() || [];
 
     const opts: uPlot.Options = {
       width: containerRef.current.clientWidth,
@@ -49,9 +50,10 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
       cursor: { show: false },
     };
 
+    // uPlot accepts TypedArrays directly in the data array
     uplotRef.current = new uPlot(
       opts,
-      [initialTicks, initialData],
+      [initialTicks as any, initialData as any],
       containerRef.current,
     );
 
@@ -60,9 +62,11 @@ export function RealTimeChart({ dataKey, color, label }: RealTimeChartProps) {
       () => {
         const h = telemetryHistory[selectedIndex];
         if (!h || !uplotRef.current) return;
+
+        // RingBuffer.toArray() returns a Float64Array, which uPlot handles efficiently
         uplotRef.current.setData([
-          h.ticks,
-          h[dataKey as keyof typeof h] as number[],
+          h.ticks.toArray() as any,
+          h[dataKey as keyof typeof h].toArray() as any,
         ]);
       },
     );
