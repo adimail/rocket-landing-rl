@@ -3,10 +3,15 @@ import { useStore } from "@/lib/store";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
+import { useThrottle } from "@/hooks/useThrottle";
 
 export function FleetTable() {
-  const rockets = useStore((s) => s.rockets);
-  const landingStatus = useStore((s) => s.landingStatus);
+  const rawRockets = useStore((s) => s.rockets);
+  const rawLandingStatus = useStore((s) => s.landingStatus);
+
+  const rockets = useThrottle(rawRockets, 100);
+  const landingStatus = useThrottle(rawLandingStatus, 100);
+
   const selectedIndex = useStore((s) => s.selectedRocketIndex);
   const setSelectedIndex = useStore((s) => s.setSelectedRocket);
 
@@ -39,10 +44,11 @@ export function FleetTable() {
         >
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const rocket = rockets[virtualRow.index];
-            const status = landingStatus[virtualRow.index];
+            const rawStatus = landingStatus[virtualRow.index];
             const isSelected = selectedIndex === virtualRow.index;
 
-            // Derived status
+            if (!rocket) return null;
+
             let badgeVariant:
               | "default"
               | "success"
@@ -50,16 +56,38 @@ export function FleetTable() {
               | "warning" = "default";
             let statusText = "Flying";
 
-            if (
-              status === "safe" ||
-              status === "good" ||
-              status === "perfect"
-            ) {
-              badgeVariant = "success";
-              statusText = "Landed";
-            } else if (status === "unsafe" || status === "crash") {
-              badgeVariant = "destructive";
-              statusText = "Crashed";
+            const status = rawStatus ? rawStatus.toLowerCase() : null;
+
+            if (status) {
+              if (
+                status.includes("safe") ||
+                status.includes("good") ||
+                status.includes("perfect") ||
+                status.includes("landed")
+              ) {
+                badgeVariant = "success";
+                statusText = "Landed";
+              } else if (
+                status.includes("unsafe") ||
+                status.includes("crash") ||
+                status.includes("destroy") ||
+                status.includes("failed")
+              ) {
+                badgeVariant = "destructive";
+                statusText = "Crashed";
+              } else {
+                statusText = rawStatus || "Unknown";
+              }
+            } else {
+              // Fallback inference if status is null but rocket is clearly stopped on ground
+              if (
+                rocket.y < 1.0 &&
+                Math.abs(rocket.vy) < 0.5 &&
+                Math.abs(rocket.vx) < 0.5
+              ) {
+                badgeVariant = "success";
+                statusText = "Landed";
+              }
             }
 
             return (

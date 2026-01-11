@@ -11,5 +11,3 @@ export function formatNumber(num: number, decimals = 2) {
     maximumFractionDigits: decimals,
   }).format(num);
 }
-
-export const WS_URL = "ws://localhost:9000/ws";

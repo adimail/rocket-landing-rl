@@ -1,4 +1,7 @@
-export const WS_URL = "ws://localhost:9000/ws";
+export const WS_URL =
+  import.meta.env.VITE_WS_URL ||
+  `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.hostname}:9000/ws`;
+
 export const API_URL = "/api";
 
 export const ROCKET_WIDTH = 13;

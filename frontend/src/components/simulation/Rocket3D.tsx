@@ -1,11 +1,11 @@
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useStore } from "@/lib/store";
 import * as THREE from "three";
-import { Cylinder, Cone } from "@react-three/drei";
+import { useGLTF, Cone } from "@react-three/drei";
 
-const ROCKET_BODY_COLOR = "#e2e8f0";
-const ROCKET_FIN_COLOR = "#475569";
+const ROCKET_SCALE = 0.007;
+
 const FLAME_COLOR_CORE = "#fff";
 const FLAME_COLOR_OUTER = "#f59e0b";
 
@@ -13,53 +13,40 @@ export function Rocket3D({ index }: { index: number }) {
   const groupRef = useRef<THREE.Group>(null);
   const flameRef = useRef<THREE.Group>(null);
 
+  const { scene } = useGLTF("/assets/booster.glb");
+  const clone = useMemo(() => scene.clone(), [scene]);
+
   useFrame(() => {
     const state = useStore.getState().rockets[index];
     const action = useStore.getState().actions[index];
 
     if (!groupRef.current || !state) return;
 
-    // Update Position (Scale factor 0.1 for 3D view)
+    // Position scaling: 0.1 means 10 meters in sim = 1 unit in 3D view
     groupRef.current.position.set(state.x * 0.1, state.y * 0.1, 0);
     groupRef.current.rotation.z = THREE.MathUtils.degToRad(state.angle);
 
-    // Update Flame
     if (flameRef.current) {
       const throttle = action?.throttle || 0;
       flameRef.current.visible = throttle > 0.01;
-      flameRef.current.scale.y = throttle;
+      // Scale flame relative to rocket scale so it doesn't look tiny/huge
+      flameRef.current.scale.set(1, throttle * 10, 1);
     }
   });
 
   return (
     <group ref={groupRef}>
-      {/* Body */}
-      <Cylinder args={[0.5, 0.5, 4, 16]} position={[0, 2, 0]}>
-        <meshStandardMaterial color={ROCKET_BODY_COLOR} />
-      </Cylinder>
+      <primitive
+        object={clone}
+        scale={ROCKET_SCALE}
+        position={[0, 0, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+      />
 
-      {/* Nose Cone */}
-      <Cone args={[0.5, 1, 16]} position={[0, 4.5, 0]}>
-        <meshStandardMaterial color={ROCKET_BODY_COLOR} />
-      </Cone>
-
-      {/* Fins */}
-      <group position={[0, 0.5, 0]}>
-        <mesh position={[0.6, 0, 0]} rotation={[0, 0, -0.5]}>
-          <boxGeometry args={[0.5, 1, 0.1]} />
-          <meshStandardMaterial color={ROCKET_FIN_COLOR} />
-        </mesh>
-        <mesh position={[-0.6, 0, 0]} rotation={[0, 0, 0.5]}>
-          <boxGeometry args={[0.5, 1, 0.1]} />
-          <meshStandardMaterial color={ROCKET_FIN_COLOR} />
-        </mesh>
-      </group>
-
-      {/* Engine Flame */}
-      <group ref={flameRef} position={[0, -0.5, 0]}>
+      <group ref={flameRef} position={[0, -1 * (ROCKET_SCALE * 50), 0]}>
         <Cone
-          args={[0.3, 3, 8]}
-          position={[0, -1.5, 0]}
+          args={[0.3 * (ROCKET_SCALE * 20), 3 * (ROCKET_SCALE * 20), 8]}
+          position={[0, -1.5 * (ROCKET_SCALE * 20), 0]}
           rotation={[Math.PI, 0, 0]}
         >
           <meshBasicMaterial
@@ -69,8 +56,8 @@ export function Rocket3D({ index }: { index: number }) {
           />
         </Cone>
         <Cone
-          args={[0.15, 2, 8]}
-          position={[0, -1, 0]}
+          args={[0.15 * (ROCKET_SCALE * 20), 2 * (ROCKET_SCALE * 20), 8]}
+          position={[0, -1 * (ROCKET_SCALE * 20), 0]}
           rotation={[Math.PI, 0, 0]}
         >
           <meshBasicMaterial color={FLAME_COLOR_CORE} />
@@ -79,3 +66,5 @@ export function Rocket3D({ index }: { index: number }) {
     </group>
   );
 }
+
+useGLTF.preload("/assets/booster.glb");

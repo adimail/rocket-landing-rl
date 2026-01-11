@@ -13,5 +13,5 @@
 
 /* uPlot Tooltip Override */
 .u-tooltip {
-  @apply rounded-lg border border-slate-200 bg-white/95 shadow-lg backdrop-blur text-xs font-mono !important;
+  @apply !rounded-lg !border !border-slate-200 !bg-white/95 !shadow-lg !backdrop-blur-md !text-xs !font-mono;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useStore } from "@/lib/store";
-import { WS_URL } from "@/lib/utils";
+import { WS_URL } from "@/lib/constants";
 import type { WebSocketMessage, RocketAction } from "@/types/simulation";
 
 export function useSocket() {
@@ -21,7 +21,7 @@ export function useSocket() {
   };
 
   useEffect(() => {
-    let pingInterval: NodeJS.Timeout;
+    let pingInterval: ReturnType<typeof setInterval>;
 
     const connect = () => {
       setConnectionStatus("connecting");

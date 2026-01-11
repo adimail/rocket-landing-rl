@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid, Environment } from "@react-three/drei";
 import { Rocket3D } from "./Rocket3D";
@@ -13,30 +14,55 @@ export function Viewport() {
   const toggleAgent = useStore((s) => s.toggleAgent);
 
   return (
-    <div className="relative w-full h-full bg-slate-50 rounded-2xl overflow-hidden border border-slate-200 shadow-inner">
-      <Canvas camera={{ position: [0, 20, 100], fov: 45 }}>
-        <color attach="background" args={["#f8fafc"]} />
+    <div className="relative w-full h-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-inner">
+      <Canvas shadows camera={{ position: [0, 20, 100], fov: 45, far: 20000 }}>
+        {/* Sky Color */}
+        <color attach="background" args={["#e0f2fe"]} />
+
         <ambientLight intensity={0.7} />
-        <directionalLight position={[10, 20, 10]} intensity={1.2} />
+        <directionalLight
+          position={[50, 100, 50]}
+          intensity={1.5}
+          castShadow
+          shadow-mapSize={[2048, 2048]}
+        />
         <Environment preset="city" />
 
+        {/* Dark Ground Plane */}
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, -0.05, 0]}
+          receiveShadow
+        >
+          <planeGeometry args={[2000, 2000]} />
+          <meshStandardMaterial color="#0f172a" />
+        </mesh>
+
+        {/* Grid with white lines */}
         <Grid
-          position={[0, -0.1, 0]}
-          args={[1000, 1000]}
-          sectionSize={10}
-          cellColor="#cbd5e1"
-          sectionColor="#94a3b8"
-          fadeDistance={400}
+          position={[0, 0, 0]}
+          args={[10000, 10000]}
+          sectionSize={20}
+          cellSize={2}
+          cellColor="#64748b"
+          sectionColor="#ffffff"
+          fadeDistance={10000}
+          infiniteGrid
         />
 
-        {rockets.map((_, i) => (
-          <Rocket3D key={i} index={i} />
-        ))}
+        <Suspense fallback={null}>
+          {rockets.map((_, i) => (
+            <Rocket3D key={i} index={i} />
+          ))}
+        </Suspense>
 
-        <OrbitControls makeDefault />
+        <OrbitControls
+          makeDefault
+          maxPolarAngle={Math.PI / 2}
+          maxDistance={8000}
+        />
       </Canvas>
 
-      {/* Floating Controls Dock */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur shadow-lg border border-slate-200 rounded-full px-4 py-2 flex items-center gap-2">
         <button
           onClick={() => sendCommand("start")}
