@@ -9,7 +9,6 @@ export interface RocketState {
   angularVelocity: number;
   mass: number;
   fuelMass: number;
-
   speed: number;
   relativeAngle: number;
 }
@@ -17,4 +16,23 @@ export interface RocketState {
 export interface RocketAction {
   throttle: number;
   coldGas: number;
+}
+
+export interface SimulationStep {
+  state: RocketState[];
+  reward: number[];
+  done: boolean[];
+  prev_action_taken: RocketAction[];
+}
+
+export interface WebSocketMessage {
+  status?: string;
+  step?: SimulationStep;
+  state?: RocketState[];
+  action?: RocketAction[];
+  landing?: (string | null)[];
+  reward?: number[];
+  done?: boolean[];
+  initial?: boolean;
+  restart?: boolean;
 }
