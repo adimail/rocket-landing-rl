@@ -1,4 +1,5 @@
 import os
+import struct
 from tornado.ioloop import IOLoop
 from backend.config import Config
 import tornado.websocket
@@ -25,6 +26,10 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         )
         self.client_connected = False
         self.io_loop = IOLoop.current()
+
+        # Cache for final results (landing status, final reward)
+        # Key: rocket_index, Value: {'status': str, 'reward': float}
+        self.final_outcomes = {}
 
     def _get_model(self):
         if self.model_version:
@@ -55,6 +60,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         self.client_connected = True
         try:
             states = self.sim.reset()
+            self.final_outcomes = {}  # Reset cache
             self.send_json(
                 {
                     "step": {
@@ -151,6 +157,91 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         except Exception as e:
             self.logger.error(f"Failed to send message: {e}")
 
+    def send_binary_telemetry(
+        self,
+        states: List[Optional[Dict]],
+        rewards: List[Optional[float]],
+        dones: List[bool],
+        actions: List[Dict[str, float]],
+        landing_statuses: List[Optional[str]],
+    ):
+        """
+        Packs telemetry data into a binary buffer.
+        Format per rocket (16 floats = 64 bytes):
+        ...
+        11: reward (NaN if inactive),
+        14: landing_code (0=None, 1=Safe, 2=Good, 3=Ok, 4=Unsafe),
+        15: is_active (1.0=Active, 0.0=Inactive/Null)
+        """
+        try:
+            # Header: 1 byte for message type (1 = Telemetry)
+            data = bytearray()
+            data.extend(struct.pack("B", 1))
+
+            for i in range(self.num_rockets):
+                state = states[i]
+                action = actions[i]
+
+                # Determine Landing Code
+                # If active, use current status. If inactive, check cache.
+                landing_str = landing_statuses[i]
+                if landing_str is None and i in self.final_outcomes:
+                    landing_str = self.final_outcomes[i]["status"]
+
+                landing_code = 0.0
+                if landing_str == "safe":
+                    landing_code = 1.0
+                elif landing_str == "good":
+                    landing_code = 2.0
+                elif landing_str == "ok":
+                    landing_code = 3.0
+                elif landing_str in ["unsafe", "crash", "destroy", "failed"]:
+                    landing_code = 4.0
+
+                if state is None:
+                    # Inactive rocket
+                    # Send NaN for reward so frontend preserves last value
+                    # Send stored landing_code so frontend knows it finished
+                    data.extend(
+                        struct.pack(
+                            "16f",
+                            *([0.0] * 11),
+                            float("nan"),
+                            0.0,
+                            0.0,
+                            landing_code,
+                            0.0,
+                        )
+                    )
+                else:
+                    # Active rocket
+                    reward = rewards[i] if rewards[i] is not None else 0.0
+                    data.extend(
+                        struct.pack(
+                            "16f",
+                            float(state.get("x", 0.0)),
+                            float(state.get("y", 0.0)),
+                            float(state.get("vx", 0.0)),
+                            float(state.get("vy", 0.0)),
+                            float(state.get("ax", 0.0)),
+                            float(state.get("ay", 0.0)),
+                            float(state.get("angle", 0.0)),
+                            float(state.get("angularVelocity", 0.0)),
+                            float(state.get("angularAcceleration", 0.0)),
+                            float(state.get("mass", 0.0)),
+                            float(state.get("fuelMass", 0.0)),
+                            float(reward),
+                            float(action.get("throttle", 0.0)),
+                            float(action.get("coldGas", 0.0)),
+                            landing_code,
+                            1.0,  # is_active
+                        )
+                    )
+
+            self.write_message(bytes(data), binary=True)
+        except Exception as e:
+            self.logger.error(f"Failed to send binary telemetry: {e}")
+
     def send_state_update(
         self,
         states: List[Optional[Dict]],
@@ -160,32 +251,44 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         try:
             prev_actions_from_sim = self.sim.prev_action_taken.copy()
             actions_for_payload: List[Dict[str, float]] = []
+            landing_statuses: List[Optional[str]] = [None] * self.num_rockets
+
             for i in range(self.num_rockets):
+                # Prepare Action
                 if states[i] is None:
                     actions_for_payload.append({"throttle": 0.0, "coldGas": 0.0})
-                    continue
-                original_action_for_rocket_i = {"throttle": 0.0, "coldGas": 0.0}
-                if i < len(prev_actions_from_sim):
-                    if isinstance(prev_actions_from_sim[i], dict):
-                        original_action_for_rocket_i = prev_actions_from_sim[i]
-                if dones[i]:
+                elif dones[i]:
                     actions_for_payload.append({"throttle": 0.0, "coldGas": 0.0})
                 else:
-                    actions_for_payload.append(original_action_for_rocket_i)
-            payload: Dict[str, Any] = {
-                "step": {
-                    "state": states,
-                    "reward": rewards,
-                    "done": dones,
-                    "prev_action_taken": actions_for_payload,
-                },
-            }
-            payload["landing"] = [None] * self.num_rockets
-            for i in range(self.num_rockets):
+                    original_action = {"throttle": 0.0, "coldGas": 0.0}
+                    if i < len(prev_actions_from_sim) and isinstance(
+                        prev_actions_from_sim[i], dict
+                    ):
+                        original_action = prev_actions_from_sim[i]
+                    actions_for_payload.append(original_action)
+
+                # Prepare Landing Status & Cache Final Result
                 if dones[i] and states[i] is not None:
                     landing_eval = evaluate_landing(states[i], self.config)
-                    payload["landing"][i] = landing_eval["landing_message"]
-            self.io_loop.add_callback(self.send_json, payload)
+                    status_str = landing_eval["landing_message"]
+                    landing_statuses[i] = status_str
+
+                    # Cache the result
+                    self.final_outcomes[i] = {
+                        "status": status_str,
+                        "reward": rewards[i],
+                    }
+
+            # Send Binary Telemetry
+            self.io_loop.add_callback(
+                self.send_binary_telemetry,
+                states,
+                rewards,
+                dones,
+                actions_for_payload,
+                landing_statuses,
+            )
+
             all_done = all(dones)
             if all_done:
                 self.broadcast_status()
@@ -197,6 +300,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
     def _initiate_restart(self):
         try:
             states = self.sim.reset()
+            self.final_outcomes = {}  # Clear cache on restart
             self.send_json(
                 {
                     "step": {

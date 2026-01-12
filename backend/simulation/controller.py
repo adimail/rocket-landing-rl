@@ -12,9 +12,9 @@ class SimulationController:
     def __init__(
         self,
         num_rockets=2,
-        log_state=True,
-        log_action=True,
-        log_reward=True,
+        log_state=False,
+        log_action=False,
+        log_reward=False,
         rl_agent: Optional[RLAgent] = None,
     ):
         try:
@@ -52,6 +52,11 @@ class SimulationController:
                 {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
             self.sim_speed = min(self.config.get("simulation.speed"), 10)
+
+            # --- BUFFERED LOGGING SETUP ---
+            self.log_buffer = []
+            self.BUFFER_SIZE = 100  # Flush to disk every 100 steps
+
             self._log(
                 "info",
                 f"SimulationController initialized with {self.num_rockets} rockets. Agent control {'enabled' if self.agent_enabled else 'disabled'}.",
@@ -65,6 +70,18 @@ class SimulationController:
             getattr(self.logger, level)(msg)
         elif level == "exception":
             print(f"EXCEPTION: {msg}")
+
+    def _flush_logs(self):
+        """Writes buffered logs to disk."""
+        if not self.log_buffer or not self.logger:
+            return
+        try:
+            for level, msg in self.log_buffer:
+                if hasattr(self.logger, level):
+                    getattr(self.logger, level)(msg)
+            self.log_buffer.clear()
+        except Exception as e:
+            print(f"Error flushing logs: {e}")
 
     def _setup_new_logger(self):
         try:
@@ -97,6 +114,7 @@ class SimulationController:
             self.current_actions = [
                 {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
+            self.log_buffer = []  # Clear buffer on reset
             if self.log_state:
                 log_states = (
                     str(states)
@@ -137,6 +155,7 @@ class SimulationController:
         try:
             if not self.paused:
                 self.paused = True
+                self._flush_logs()  # Flush logs when pausing
                 self._log("info", "Simulation paused.")
             else:
                 self._log("info", "Simulation already paused.")
@@ -172,41 +191,54 @@ class SimulationController:
                 continue
             loop_start_time = asyncio.get_event_loop().time()
             try:
-                actions_for_this_step: List[Dict[str, float]] = []
+                # 1. Get all states once
                 current_sim_states = self.render()
-                for i in range(self.num_rockets):
-                    action_to_use = {"throttle": 0.0, "coldGas": 0.0}
-                    if (
-                        self.agent_enabled
-                        and i in self.agent_controlled_indices
-                        and self.rl_agent
-                    ):
-                        raw_state = current_sim_states[i]
-                        predicted_action = self.rl_agent.predict(raw_state)
-                        if predicted_action:
-                            action_to_use = predicted_action
-                        else:
-                            self._log(
-                                "warning",
-                                f"Agent prediction failed for rocket {i}. Using default action.",
-                            )
-                            action_to_use = {"throttle": 0.0, "coldGas": 0.0}
-                    else:
-                        action_to_use = self.current_actions[i]
-                    actions_for_this_step.append(action_to_use)
+
+                # 2. Prepare batch prediction inputs
+                indices_to_predict = []
+                states_to_predict = []
+
+                # Initialize actions with defaults or manual overrides
+                actions_for_this_step = [
+                    self.current_actions[i] for i in range(self.num_rockets)
+                ]
+
+                if self.agent_enabled and self.rl_agent:
+                    for i in range(self.num_rockets):
+                        # OPTIMIZATION: Only predict if agent controlled AND NOT DONE
+                        if (
+                            i in self.agent_controlled_indices
+                            and not self.rocket_touchdown_status[i]
+                        ):
+                            indices_to_predict.append(i)
+                            states_to_predict.append(current_sim_states[i])
+
+                # 3. Run Batch Prediction
+                if states_to_predict:
+                    predicted_actions = self.rl_agent.predict_batch(states_to_predict)
+                    for idx, action in zip(indices_to_predict, predicted_actions):
+                        actions_for_this_step[idx] = action
+
+                # 4. Step simulation
                 states, rewards, dones = self.step(actions_for_this_step)
+
                 all_done = all(dones)
                 if self.state_callback:
                     self.state_callback(states, rewards, dones)
+
+                # Reset manual actions for next step
                 self.current_actions = [
                     {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
                 ]
+
                 if all_done:
+                    self._flush_logs()  # Flush before stopping
                     self._log(
                         "info", "All rockets have landed or finished. Stopping loop."
                     )
                     self._running = False
                     break
+
                 loop_end_time = asyncio.get_event_loop().time()
                 elapsed_time = loop_end_time - loop_start_time
                 sleep_duration = max(0, (self.dt / self.sim_speed) - elapsed_time)
@@ -225,6 +257,7 @@ class SimulationController:
         all_rewards: List[Optional[float]] = []
         all_dones: List[bool] = []
         actual_actions_taken_this_step: List[Dict[str, float]] = []
+
         if len(actions) != self.num_rockets:
             self._log(
                 "error",
@@ -233,6 +266,7 @@ class SimulationController:
             actions = [
                 {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
+
         try:
             if self.paused:
                 for i in range(self.num_rockets):
@@ -245,7 +279,9 @@ class SimulationController:
                     )
                 self.prev_action_taken = actual_actions_taken_this_step
                 return all_states, all_rewards, all_dones
+
             for i in range(self.num_rockets):
+                # OPTIMIZATION: If rocket is done, skip everything
                 if self.rocket_touchdown_status[i]:
                     all_states.append(None)
                     all_rewards.append(None)
@@ -254,11 +290,15 @@ class SimulationController:
                         {"throttle": 0.0, "coldGas": 0.0}
                     )
                     continue
+
+                # Rocket is active
                 current_action = actions[i]
                 actual_actions_taken_this_step.append(current_action)
                 state, reward, sim_done = self.rockets[i].step(current_action)
                 self.rocket_touchdown_status[i] = sim_done
                 self.rocket_steps[i] += 1
+
+                # --- BUFFERED LOGGING (Only for active rockets) ---
                 if self.log_state or self.log_action or self.log_reward:
                     log_entry = {
                         "step": self.rocket_steps[i],
@@ -268,12 +308,21 @@ class SimulationController:
                         "reward": f"{reward:.4f}" if self.log_reward else "omitted",
                         "done": sim_done,
                     }
-                    self._log("debug", f"StepLog: {json.dumps(log_entry)}")
+                    self.log_buffer.append(
+                        ("debug", f"StepLog: {json.dumps(log_entry)}")
+                    )
+
                 all_states.append(state)
                 all_rewards.append(reward)
                 all_dones.append(sim_done)
+
+            # Flush if buffer is full
+            if len(self.log_buffer) >= self.BUFFER_SIZE:
+                self._flush_logs()
+
             self.prev_action_taken = actual_actions_taken_this_step
             return all_states, all_rewards, all_dones
+
         except Exception as e:
             self._log(
                 "exception", f"Simulation step failed for one or more rockets: {e}"
