@@ -6,8 +6,7 @@ export function useKeyboardShortcuts() {
   const selectedIndex = useStore((s) => s.selectedRocketIndex);
   const setSelectedRocket = useStore((s) => s.setSelectedRocket);
   const rocketCount = useStore((s) => s.rockets.length);
-  const isPlaying = useStore((s) => s.isPlaying);
-  const setIsPlaying = useStore((s) => s.setIsPlaying);
+  const isSimPlaying = useStore((s) => s.isSimPlaying);
   const status = useStore((s) => s.status);
   const { sendCommand } = useSocket();
 
@@ -16,42 +15,31 @@ export function useKeyboardShortcuts() {
       if (event.code === "Space") {
         event.preventDefault();
         if (status !== "connected") return;
-
-        const nextState = !isPlaying;
-        setIsPlaying(nextState);
-        sendCommand(nextState ? "start" : "pause");
+        sendCommand(isSimPlaying ? "pause" : "start");
         return;
       }
-
       if (event.key === "r" || event.key === "R") {
         event.preventDefault();
         if (status !== "connected") return;
-        setIsPlaying(true);
         sendCommand("restart");
         return;
       }
-
       if (rocketCount === 0) return;
-
       if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
         event.preventDefault();
-        const prevIndex = (selectedIndex - 1 + rocketCount) % rocketCount;
-        setSelectedRocket(prevIndex);
+        setSelectedRocket((selectedIndex - 1 + rocketCount) % rocketCount);
       } else if (event.key === "ArrowDown" || event.key === "ArrowRight") {
         event.preventDefault();
-        const nextIndex = (selectedIndex + 1) % rocketCount;
-        setSelectedRocket(nextIndex);
+        setSelectedRocket((selectedIndex + 1) % rocketCount);
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     selectedIndex,
     setSelectedRocket,
     rocketCount,
-    isPlaying,
-    setIsPlaying,
+    isSimPlaying,
     sendCommand,
     status,
   ]);

@@ -17,6 +17,7 @@ interface TelemetryCallbacks {
     rewards?: number[];
   }) => void;
   onReset: () => void;
+  onSimStatusChange: (status: string) => void;
 }
 
 class TelemetryService {
@@ -46,48 +47,34 @@ class TelemetryService {
     ) {
       return;
     }
-
     this.isExplicitlyDisconnected = false;
     this.callbacks?.onStatusChange("connecting");
-
     if (this.errorGraceTimeout) clearTimeout(this.errorGraceTimeout);
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
-
     this.errorGraceTimeout = setTimeout(() => {
       if (this.socket?.readyState !== WebSocket.OPEN) {
         this.callbacks?.onStatusChange("error");
       }
     }, 5000);
-
     this.socket = new WebSocket(WS_URL);
-
     this.socket.onopen = () => {
       if (this.errorGraceTimeout) clearTimeout(this.errorGraceTimeout);
       if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
-
       this.callbacks?.onStatusChange("connected");
       this.startPing();
     };
-
     this.socket.onclose = (event) => {
       this.stopPing();
-
       if (this.isExplicitlyDisconnected) {
         this.callbacks?.onStatusChange("disconnected");
         return;
       }
-
       if (event.code === 1000) {
         this.callbacks?.onStatusChange("disconnected");
       } else {
         this.reconnectTimeout = setTimeout(this.connect, 3000);
       }
-
-      if (this.errorGraceTimeout) clearTimeout(this.errorGraceTimeout);
     };
-
-    this.socket.onerror = () => {};
-
     this.socket.onmessage = this.handleMessage;
   }
 
@@ -120,27 +107,25 @@ class TelemetryService {
   private handleMessage = (event: MessageEvent) => {
     try {
       const data: WebSocketMessage = JSON.parse(event.data);
-
       if (data.status === "pong") {
         this.callbacks?.onLatencyUpdate(performance.now() - this.lastPing);
         return;
       }
-
+      if (data.status === "playing" || data.status === "paused") {
+        this.callbacks?.onSimStatusChange(data.status);
+      }
       if (data.speed !== undefined) this.callbacks?.onSpeedUpdate(data.speed);
       if (data.restart) this.callbacks?.onReset();
-
       let states = data.state;
       let actions = data.action;
       let landing = data.landing;
       let rewards = data.reward;
-
       if (data.step) {
         states = data.step.state;
         actions = data.step.prev_action_taken;
         rewards = data.step.reward;
         landing = data.landing;
       }
-
       this.callbacks?.onSimulationUpdate({
         states,
         actions,
@@ -157,6 +142,7 @@ class TelemetryService {
     this.pingInterval = setInterval(() => {
       if (this.socket?.readyState === WebSocket.OPEN) {
         this.lastPing = performance.now();
+        this.socket.send(JSON.stringify({ command: "ping" }));
       }
     }, 2000);
   }

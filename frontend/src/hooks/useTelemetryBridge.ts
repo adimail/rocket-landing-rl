@@ -8,6 +8,7 @@ export function useTelemetryBridge() {
   const setSpeed = useStore((s) => s.setSpeed);
   const updateSimulation = useStore((s) => s.updateSimulation);
   const resetHistory = useStore((s) => s.resetHistory);
+  const setSimStatus = useStore((s) => s.setSimStatus);
 
   useEffect(() => {
     telemetryService.init({
@@ -16,10 +17,9 @@ export function useTelemetryBridge() {
       onSpeedUpdate: setSpeed,
       onSimulationUpdate: updateSimulation,
       onReset: resetHistory,
+      onSimStatusChange: setSimStatus,
     });
-
     telemetryService.connect();
-
     return () => {
       telemetryService.disconnect();
     };
@@ -29,5 +29,6 @@ export function useTelemetryBridge() {
     setSpeed,
     updateSimulation,
     resetHistory,
+    setSimStatus,
   ]);
 }

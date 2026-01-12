@@ -56,7 +56,7 @@ interface SimulationStore {
   selectedRocketIndex: number;
   isAgentEnabled: boolean;
   activeCharts: string[];
-  isPlaying: boolean;
+  isSimPlaying: boolean;
 
   setConnectionStatus: (status: ConnectionStatus) => void;
   setLatency: (ms: number) => void;
@@ -71,7 +71,7 @@ interface SimulationStore {
   toggleAgent: () => void;
   toggleChart: (key: string) => void;
   resetHistory: () => void;
-  setIsPlaying: (playing: boolean) => void;
+  setSimStatus: (status: string) => void;
 }
 
 export const useStore = create<SimulationStore>()(
@@ -89,7 +89,7 @@ export const useStore = create<SimulationStore>()(
         selectedRocketIndex: 0,
         isAgentEnabled: true,
         activeCharts: ["vy", "vx", "angle", "reward"],
-        isPlaying: false,
+        isSimPlaying: false,
 
         setConnectionStatus: (status) => set({ status }),
         setLatency: (latency) => set({ latency }),
@@ -98,7 +98,6 @@ export const useStore = create<SimulationStore>()(
         updateSimulation: (data) =>
           set((state) => {
             const newTick = state.tick + 1;
-
             if (data.states) {
               data.states.forEach((s, i) => {
                 const h = initHistory(i);
@@ -114,7 +113,6 @@ export const useStore = create<SimulationStore>()(
                 h.reward.push(data.rewards?.[i] || 0);
               });
             }
-
             return {
               tick: newTick,
               rockets: data.states || state.rockets,
@@ -130,15 +128,11 @@ export const useStore = create<SimulationStore>()(
         toggleChart: (key) =>
           set((state) => {
             const isAlreadyActive = state.activeCharts.includes(key);
-            if (isAlreadyActive) {
-              return {
-                activeCharts: state.activeCharts.filter((c) => c !== key),
-              };
-            } else {
-              return {
-                activeCharts: [key, ...state.activeCharts],
-              };
-            }
+            return {
+              activeCharts: isAlreadyActive
+                ? state.activeCharts.filter((c) => c !== key)
+                : [key, ...state.activeCharts],
+            };
           }),
         resetHistory: () => {
           Object.values(telemetryHistory).forEach((h) => {
@@ -161,7 +155,7 @@ export const useStore = create<SimulationStore>()(
             rewards: [],
           });
         },
-        setIsPlaying: (isPlaying) => set({ isPlaying }),
+        setSimStatus: (status) => set({ isSimPlaying: status === "playing" }),
       }),
       {
         name: "rocket-sim-storage",
