@@ -11,13 +11,14 @@ interface TelemetryCallbacks {
   onLatencyUpdate: (latency: number) => void;
   onSpeedUpdate: (speed: number) => void;
   onSimulationUpdate: (data: {
-    states?: RocketState[];
+    states?: (RocketState | null)[];
     actions?: RocketAction[];
     landing?: (string | null)[];
-    rewards?: number[];
+    rewards?: (number | null)[];
   }) => void;
   onReset: () => void;
   onSimStatusChange: (status: string) => void;
+  onAgentStatusChange: (enabled: boolean) => void;
 }
 
 class TelemetryService {
@@ -115,6 +116,8 @@ class TelemetryService {
         this.callbacks?.onSimStatusChange(data.status);
       }
       if (data.speed !== undefined) this.callbacks?.onSpeedUpdate(data.speed);
+      if (data.agent_enabled !== undefined)
+        this.callbacks?.onAgentStatusChange(data.agent_enabled);
       if (data.restart) this.callbacks?.onReset();
       let states = data.state;
       let actions = data.action;

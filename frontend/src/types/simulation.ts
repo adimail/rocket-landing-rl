@@ -20,8 +20,8 @@ export interface RocketAction {
 }
 
 export interface SimulationStep {
-  state: RocketState[];
-  reward: number[];
+  state: (RocketState | null)[];
+  reward: (number | null)[];
   done: boolean[];
   prev_action_taken: RocketAction[];
 }
@@ -37,6 +37,7 @@ export interface WebSocketMessage {
   initial?: boolean;
   restart?: boolean;
   speed?: number;
+  agent_enabled?: boolean;
 }
 
 export type ConnectionStatus =

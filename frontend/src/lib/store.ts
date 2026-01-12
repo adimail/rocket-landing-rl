@@ -69,6 +69,7 @@ interface SimulationStore {
   }) => void;
   setSelectedRocket: (index: number) => void;
   toggleAgent: () => void;
+  setAgentEnabled: (enabled: boolean) => void;
   toggleChart: (key: string) => void;
   resetHistory: () => void;
   setSimStatus: (status: string) => void;
@@ -132,6 +133,7 @@ export const useStore = create<SimulationStore>()(
         setSelectedRocket: (index) => set({ selectedRocketIndex: index }),
         toggleAgent: () =>
           set((state) => ({ isAgentEnabled: !state.isAgentEnabled })),
+        setAgentEnabled: (enabled) => set({ isAgentEnabled: enabled }),
         toggleChart: (key) =>
           set((state) => {
             const isAlreadyActive = state.activeCharts.includes(key);

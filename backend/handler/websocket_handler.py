@@ -85,7 +85,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                         self.sim.agent_enabled = not self.sim.agent_enabled
                         status = "enabled" if self.sim.agent_enabled else "disabled"
                         self.logger.info(f"RL Agent control {status} by user.")
-                        self.send_json({"status": f"Agent {status}"})
+                        self.broadcast_status()
                     else:
                         self.logger.warning(
                             "Cannot toggle agent: Agent not loaded into SimulationController."
@@ -136,7 +136,13 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def broadcast_status(self):
         status_msg = "paused" if self.sim.paused else "playing"
-        self.send_json({"status": status_msg, "speed": self.sim.sim_speed})
+        self.send_json(
+            {
+                "status": status_msg,
+                "speed": self.sim.sim_speed,
+                "agent_enabled": self.sim.agent_enabled,
+            }
+        )
 
     def send_json(self, payload: dict):
         try:

@@ -9,6 +9,7 @@ export function useTelemetryBridge() {
   const updateSimulation = useStore((s) => s.updateSimulation);
   const resetHistory = useStore((s) => s.resetHistory);
   const setSimStatus = useStore((s) => s.setSimStatus);
+  const setAgentEnabled = useStore((s) => s.setAgentEnabled);
 
   useEffect(() => {
     telemetryService.init({
@@ -18,6 +19,7 @@ export function useTelemetryBridge() {
       onSimulationUpdate: updateSimulation,
       onReset: resetHistory,
       onSimStatusChange: setSimStatus,
+      onAgentStatusChange: setAgentEnabled,
     });
     telemetryService.connect();
     return () => {
@@ -30,5 +32,6 @@ export function useTelemetryBridge() {
     updateSimulation,
     resetHistory,
     setSimStatus,
+    setAgentEnabled,
   ]);
 }
