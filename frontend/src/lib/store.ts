@@ -62,10 +62,10 @@ interface SimulationStore {
   setLatency: (ms: number) => void;
   setSpeed: (speed: number) => void;
   updateSimulation: (data: {
-    states?: RocketState[];
+    states?: (RocketState | null)[];
     actions?: RocketAction[];
     landing?: (string | null)[];
-    rewards?: number[];
+    rewards?: (number | null)[];
   }) => void;
   setSelectedRocket: (index: number) => void;
   toggleAgent: () => void;
@@ -100,6 +100,7 @@ export const useStore = create<SimulationStore>()(
             const newTick = state.tick + 1;
             if (data.states) {
               data.states.forEach((s, i) => {
+                if (!s) return;
                 const h = initHistory(i);
                 h.ticks.push(newTick);
                 h.vy.push(s.vy);
@@ -115,10 +116,16 @@ export const useStore = create<SimulationStore>()(
             }
             return {
               tick: newTick,
-              rockets: data.states || state.rockets,
+              rockets: data.states
+                ? data.states.map((s, i) => s || state.rockets[i])
+                : state.rockets,
               actions: data.actions || state.actions,
               landingStatus: data.landing || state.landingStatus,
-              rewards: data.rewards || state.rewards,
+              rewards: data.rewards
+                ? data.rewards.map((r, i) =>
+                    r !== null && r !== undefined ? r : state.rewards[i],
+                  )
+                : state.rewards,
             };
           }),
 

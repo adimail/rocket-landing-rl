@@ -4,7 +4,6 @@ from backend.config import Config
 import tornado.websocket
 import json
 from typing import Dict, List, Any, Optional
-
 from backend.simulation import SimulationController
 from backend.utils import evaluate_landing
 from backend.rl.agent import RLAgent
@@ -61,7 +60,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                     "step": {
                         "state": states,
                         "reward": None,
-                        "done": False,
+                        "done": [False] * self.num_rockets,
                         "prev_action_taken": None,
                     },
                     "initial": True,
@@ -147,12 +146,18 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
             self.logger.error(f"Failed to send message: {e}")
 
     def send_state_update(
-        self, states: List[Dict], rewards: List[float], dones: List[bool]
+        self,
+        states: List[Optional[Dict]],
+        rewards: List[Optional[float]],
+        dones: List[bool],
     ):
         try:
             prev_actions_from_sim = self.sim.prev_action_taken.copy()
             actions_for_payload: List[Dict[str, float]] = []
             for i in range(self.num_rockets):
+                if states[i] is None:
+                    actions_for_payload.append({"throttle": 0.0, "coldGas": 0.0})
+                    continue
                 original_action_for_rocket_i = {"throttle": 0.0, "coldGas": 0.0}
                 if i < len(prev_actions_from_sim):
                     if isinstance(prev_actions_from_sim[i], dict):
@@ -171,7 +176,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
             }
             payload["landing"] = [None] * self.num_rockets
             for i in range(self.num_rockets):
-                if dones[i]:
+                if dones[i] and states[i] is not None:
                     landing_eval = evaluate_landing(states[i], self.config)
                     payload["landing"][i] = landing_eval["landing_message"]
             self.io_loop.add_callback(self.send_json, payload)
@@ -191,7 +196,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                     "step": {
                         "state": states,
                         "reward": None,
-                        "done": False,
+                        "done": [False] * self.num_rockets,
                         "prev_action_taken": None,
                     },
                     "restart": True,
