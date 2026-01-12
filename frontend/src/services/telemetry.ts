@@ -119,22 +119,28 @@ class TelemetryService {
       if (data.agent_enabled !== undefined)
         this.callbacks?.onAgentStatusChange(data.agent_enabled);
       if (data.restart) this.callbacks?.onReset();
+
       let states = data.state;
       let actions = data.action;
       let landing = data.landing;
       let rewards = data.reward;
+
       if (data.step) {
         states = data.step.state;
         actions = data.step.prev_action_taken;
         rewards = data.step.reward;
         landing = data.landing;
       }
-      this.callbacks?.onSimulationUpdate({
-        states,
-        actions,
-        landing,
-        rewards,
-      });
+
+      const hasPayload = !!(states || actions || rewards || landing);
+      if (hasPayload) {
+        this.callbacks?.onSimulationUpdate({
+          states,
+          actions,
+          landing,
+          rewards,
+        });
+      }
     } catch (e) {
       console.error("Telemetry parse error", e);
     }

@@ -98,8 +98,11 @@ export const useStore = create<SimulationStore>()(
 
         updateSimulation: (data) =>
           set((state) => {
-            const newTick = state.tick + 1;
-            if (data.states) {
+            const hasData = !!(data.states && data.states.length > 0);
+            const shouldIncrementTick = state.isSimPlaying && hasData;
+            const newTick = shouldIncrementTick ? state.tick + 1 : state.tick;
+
+            if (data.states && shouldIncrementTick) {
               data.states.forEach((s, i) => {
                 if (!s) return;
                 const h = initHistory(i);
