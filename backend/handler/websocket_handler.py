@@ -1,5 +1,4 @@
 import os
-import struct
 from tornado.ioloop import IOLoop
 from backend.config import Config
 import tornado.websocket
@@ -8,6 +7,7 @@ from typing import Dict, List, Any, Optional
 from backend.simulation import SimulationController
 from backend.utils import evaluate_landing
 from backend.rl.agent import RLAgent
+from backend.protocol import BinaryProtocol
 
 
 class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -17,7 +17,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
     def initialize(self, logger):
         self.logger = logger
         self.config = Config()
-        self.num_rockets = self.config.get("environment.num_rockets") or 1
+        self.num_rockets = self.config.get("environment.num_rockets")
         self.model_version = self.config.get("model.version")
         self.rl_agent_instance: Optional[RLAgent] = None
         self._get_model()
@@ -166,77 +166,31 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         landing_statuses: List[Optional[str]],
     ):
         """
-        Packs telemetry data into a binary buffer.
-        Format per rocket (16 floats = 64 bytes):
-        ...
-        11: reward (NaN if inactive),
-        14: landing_code (0=None, 1=Safe, 2=Good, 3=Ok, 4=Unsafe),
-        15: is_active (1.0=Active, 0.0=Inactive/Null)
+        Packs telemetry data into a binary buffer using BinaryProtocol.
         """
         try:
             # Header: 1 byte for message type (1 = Telemetry)
             data = bytearray()
-            data.extend(struct.pack("B", 1))
+            data.extend(BinaryProtocol.encode_telemetry_header())
 
             for i in range(self.num_rockets):
                 state = states[i]
                 action = actions[i]
 
-                # Determine Landing Code
+                # Determine Landing Status
                 # If active, use current status. If inactive, check cache.
                 landing_str = landing_statuses[i]
                 if landing_str is None and i in self.final_outcomes:
                     landing_str = self.final_outcomes[i]["status"]
 
-                landing_code = 0.0
-                if landing_str == "safe":
-                    landing_code = 1.0
-                elif landing_str == "good":
-                    landing_code = 2.0
-                elif landing_str == "ok":
-                    landing_code = 3.0
-                elif landing_str in ["unsafe", "crash", "destroy", "failed"]:
-                    landing_code = 4.0
-
-                if state is None:
-                    # Inactive rocket
-                    # Send NaN for reward so frontend preserves last value
-                    # Send stored landing_code so frontend knows it finished
-                    data.extend(
-                        struct.pack(
-                            "16f",
-                            *([0.0] * 11),
-                            float("nan"),
-                            0.0,
-                            0.0,
-                            landing_code,
-                            0.0,
-                        )
-                    )
-                else:
-                    # Active rocket
-                    reward = rewards[i] if rewards[i] is not None else 0.0
-                    data.extend(
-                        struct.pack(
-                            "16f",
-                            float(state.get("x", 0.0)),
-                            float(state.get("y", 0.0)),
-                            float(state.get("vx", 0.0)),
-                            float(state.get("vy", 0.0)),
-                            float(state.get("ax", 0.0)),
-                            float(state.get("ay", 0.0)),
-                            float(state.get("angle", 0.0)),
-                            float(state.get("angularVelocity", 0.0)),
-                            float(state.get("angularAcceleration", 0.0)),
-                            float(state.get("mass", 0.0)),
-                            float(state.get("fuelMass", 0.0)),
-                            float(reward),
-                            float(action.get("throttle", 0.0)),
-                            float(action.get("coldGas", 0.0)),
-                            landing_code,
-                            1.0,  # is_active
-                        )
-                    )
+                # Use Protocol to encode
+                chunk = BinaryProtocol.encode_rocket_state(
+                    state=state,
+                    reward=rewards[i],
+                    action=action,
+                    landing_status=landing_str,
+                )
+                data.extend(chunk)
 
             self.write_message(bytes(data), binary=True)
         except Exception as e:

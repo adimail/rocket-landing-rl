@@ -11,28 +11,30 @@ from backend.rl import RLAgent
 class SimulationController:
     def __init__(
         self,
-        num_rockets=2,
-        log_state=False,
-        log_action=False,
-        log_reward=False,
+        num_rockets: int,
         rl_agent: Optional[RLAgent] = None,
     ):
         try:
-            self.log_state = log_state
-            self.log_action = log_action
-            self.log_reward = log_reward
             self.config = Config()
+
+            self.log_state = self.config.get("logging.log_state")
+            self.log_action = self.config.get("logging.log_action")
+            self.log_reward = self.config.get("logging.log_reward")
+
             self.logger = None
             self._setup_new_logger()
+
             self.num_rockets = num_rockets
             self.rockets: List[RocketControls] = [
                 RocketControls() for _ in range(self.num_rockets)
             ]
+
             self.dt = (
                 self.rockets[0].dt
                 if self.rockets
                 else self.config.get("simulation.time_step")
             )
+
             self.paused = True
             self.rocket_touchdown_status: List[bool] = [False] * self.num_rockets
             self.rocket_steps: List[int] = [0] * self.num_rockets
@@ -51,6 +53,8 @@ class SimulationController:
             self.prev_action_taken: List[Dict[str, float]] = [
                 {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
+
+            # Strict config retrieval
             self.sim_speed = min(self.config.get("simulation.speed"), 10)
 
             # --- BUFFERED LOGGING SETUP ---
@@ -60,6 +64,10 @@ class SimulationController:
             self._log(
                 "info",
                 f"SimulationController initialized with {self.num_rockets} rockets. Agent control {'enabled' if self.agent_enabled else 'disabled'}.",
+            )
+            self._log(
+                "info",
+                f"Logging Config -> State: {self.log_state}, Action: {self.log_action}, Reward: {self.log_reward}",
             )
         except Exception as e:
             self._log("exception", f"Failed to initialize SimulationController: {e}")
@@ -90,11 +98,14 @@ class SimulationController:
                     handler.close()
                     self.logger.removeHandler(handler)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            log_dir = "logs/simulations"
+            # Strict config retrieval for log dir
+            log_dir = self.config.get("paths.logs_dir")
+            sim_log_dir = f"{log_dir}/simulations"
+
             log_filename = f"{timestamp}.log"
             self.logger = Logger(
                 file_name=log_filename,
-                log_dir=log_dir,
+                log_dir=sim_log_dir,
                 stream_handler=False,
             ).get_logger()
             self._log("info", f"Logger initialized: {log_filename}")

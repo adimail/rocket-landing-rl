@@ -25,10 +25,13 @@ class Config:
         for i, key in enumerate(keys):
             if not isinstance(val, dict):
                 raise KeyError(
-                    f"Invalid config path: '{'.'.join(keys[:i])}' is not a dict."
+                    f"Invalid config path: '{'.'.join(keys[:i])}' is not a dict. Cannot access '{key}'."
                 )
             if key not in val:
                 raise KeyError(f"Missing config key: '{'.'.join(keys[:i+1])}'")
             val = val[key]
+
+        if val is None:
+            raise ValueError(f"Config key '{key_path}' exists but has no value (None).")
 
         return val
