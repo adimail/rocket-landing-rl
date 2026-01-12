@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from datetime import datetime
 
 from backend.logger import Logger
@@ -123,9 +123,8 @@ class RLAgent:
             # Check if the shape matches what the loaded model expects
             if self.observation_shape and obs.shape != self.observation_shape:
                 logger.warning(
-                    f"Observation shape mismatch. Expected {self.observation_shape}, got {obs.shape}. Check _state_dict_to_obs_array order and env definition."
+                    f"Observation shape mismatch. Expected {self.observation_shape}, got {obs.shape}."
                 )
-                # Attempt to reshape if it's just missing the batch dim, otherwise return None
                 if (
                     len(obs.shape) == 1
                     and len(self.observation_shape) == 1
@@ -200,3 +199,37 @@ class RLAgent:
         except Exception as e:
             logger.error(f"Error during model prediction: {e}", exc_info=True)
             return None
+
+    def predict_batch(self, raw_states: List[Dict]) -> List[Dict[str, float]]:
+        """Predict actions for multiple rockets in one pass."""
+        if not raw_states:
+            return []
+
+        if self.model is None or self.norm_env_wrapper is None:
+            return [{"throttle": 0.0, "coldGas": 0.0} for _ in raw_states]
+
+        # 1. Convert list of dicts to a single NumPy array (Batch Size, Obs Dim)
+        obs_list = []
+        for s in raw_states:
+            obs = self._state_dict_to_obs_array(s)
+            if obs is not None:
+                obs_list.append(obs)
+            else:
+                # Fallback for bad state
+                obs_list.append(np.zeros(self.observation_shape, dtype=np.float32))
+
+        obs_array = np.stack(obs_list)
+
+        # 2. Normalize observations
+        normalized_obs = self.norm_env_wrapper.normalize_obs(obs_array)
+
+        # 3. Predict (returns a batch of actions)
+        actions, _ = self.model.predict(normalized_obs, deterministic=True)
+
+        # 4. Convert back to list of dicts
+        results = []
+        for i in range(len(actions)):
+            results.append(
+                {"throttle": float(actions[i][0]), "coldGas": float(actions[i][1])}
+            )
+        return results

@@ -1,10 +1,10 @@
 import os
+import struct
 from tornado.ioloop import IOLoop
 from backend.config import Config
 import tornado.websocket
 import json
 from typing import Dict, List, Any, Optional
-
 from backend.simulation import SimulationController
 from backend.utils import evaluate_landing
 from backend.rl.agent import RLAgent
@@ -18,18 +18,18 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         self.logger = logger
         self.config = Config()
         self.num_rockets = self.config.get("environment.num_rockets") or 1
-
         self.model_version = self.config.get("model.version")
         self.rl_agent_instance: Optional[RLAgent] = None
-
         self._get_model()
-
         self.sim = SimulationController(
             self.num_rockets, rl_agent=self.rl_agent_instance
         )
-
         self.client_connected = False
         self.io_loop = IOLoop.current()
+
+        # Cache for final results (landing status, final reward)
+        # Key: rocket_index, Value: {'status': str, 'reward': float}
+        self.final_outcomes = {}
 
     def _get_model(self):
         if self.model_version:
@@ -58,20 +58,21 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         self.logger.info("WebSocket opened")
         self.client_connected = True
-
         try:
             states = self.sim.reset()
+            self.final_outcomes = {}  # Reset cache
             self.send_json(
                 {
                     "step": {
                         "state": states,
                         "reward": None,
-                        "done": False,
+                        "done": [False] * self.num_rockets,
                         "prev_action_taken": None,
                     },
                     "initial": True,
                 }
             )
+            self.broadcast_status()
         except Exception as e:
             self.logger.error(f"Failed to send initial state: {e}")
 
@@ -83,7 +84,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
     def on_message(self, message):
         try:
             data = json.loads(message)
-
             if "command" in data:
                 command = data["command"]
                 if command == "toggle_agent":
@@ -91,7 +91,7 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                         self.sim.agent_enabled = not self.sim.agent_enabled
                         status = "enabled" if self.sim.agent_enabled else "disabled"
                         self.logger.info(f"RL Agent control {status} by user.")
-                        self.send_json({"status": f"Agent {status}"})
+                        self.broadcast_status()
                     else:
                         self.logger.warning(
                             "Cannot toggle agent: Agent not loaded into SimulationController."
@@ -101,16 +101,14 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 else:
                     self.handle_command(command)
                     return
-
             if "speed" in data:
                 speed = float(data["speed"])
                 self.sim.sim_speed = max(speed, 0.01)
+                self.broadcast_status()
                 return
-
             if "action" in data and "rocket_index" in data:
                 rocket_index = int(data["rocket_index"])
                 action_data = data["action"]
-
                 if isinstance(action_data, dict):
                     try:
                         action_dict: Dict[str, float] = {
@@ -127,19 +125,8 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                         f"Received user action is not a dictionary: {action_data}"
                     )
                 return
-
-            self.logger.warning(
-                f"Received unrecognized message format: {message[:200]}..."
-            )
-
-        except json.JSONDecodeError as e:
-            self.logger.error(
-                f"Failed to decode JSON message: {e} - Message: {message[:200]}..."
-            )
         except Exception as e:
-            self.logger.error(
-                f"WebSocket message handling failed: {e} - Message: {message[:200]}..."
-            )
+            self.logger.error(f"WebSocket message handling failed: {e}")
 
     def handle_command(self, command: str):
         try:
@@ -149,100 +136,182 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 self.sim.start(self.send_state_update)
             elif command == "restart":
                 self.io_loop.call_later(0.1, self._initiate_restart)
-
+            self.broadcast_status()
         except Exception as e:
             self.logger.error(f"Command handling failed: {e}")
 
+    def broadcast_status(self):
+        status_msg = "paused" if self.sim.paused else "playing"
+        self.send_json(
+            {
+                "status": status_msg,
+                "speed": self.sim.sim_speed,
+                "agent_enabled": self.sim.agent_enabled,
+            }
+        )
+
     def send_json(self, payload: dict):
-        """Safely serialize and send a JSON payload."""
         try:
             message = json.dumps(payload)
             self.write_message(message)
-        except TypeError as e:
-            self.logger.error(
-                f"Failed to serialize payload to JSON: {e} - Payload: {payload}"
-            )
-        except tornado.websocket.WebSocketClosedError:
-            self.logger.warning("Attempted to send message on closed WebSocket.")
         except Exception as e:
             self.logger.error(f"Failed to send message: {e}")
 
-    def send_state_update(
-        self, states: List[Dict], rewards: List[float], dones: List[bool]
+    def send_binary_telemetry(
+        self,
+        states: List[Optional[Dict]],
+        rewards: List[Optional[float]],
+        dones: List[bool],
+        actions: List[Dict[str, float]],
+        landing_statuses: List[Optional[str]],
     ):
-        """Callback function invoked by SimulationController after a step."""
+        """
+        Packs telemetry data into a binary buffer.
+        Format per rocket (16 floats = 64 bytes):
+        ...
+        11: reward (NaN if inactive),
+        14: landing_code (0=None, 1=Safe, 2=Good, 3=Ok, 4=Unsafe),
+        15: is_active (1.0=Active, 0.0=Inactive/Null)
+        """
         try:
-            prev_actions_from_sim = self.sim.prev_action_taken.copy()
+            # Header: 1 byte for message type (1 = Telemetry)
+            data = bytearray()
+            data.extend(struct.pack("B", 1))
 
-            actions_for_payload: List[Dict[str, float]] = []
             for i in range(self.num_rockets):
-                original_action_for_rocket_i = {"throttle": 0.0, "coldGas": 0.0}
+                state = states[i]
+                action = actions[i]
 
-                if i < len(prev_actions_from_sim):
-                    if isinstance(prev_actions_from_sim[i], dict):
-                        original_action_for_rocket_i = prev_actions_from_sim[i]
-                    else:
-                        self.logger.warning(
-                            f"Item at index {i} in prev_actions_from_sim is not a dict: {prev_actions_from_sim[i]}. "
-                            f"Defaulting to zero action for payload for rocket {i}."
+                # Determine Landing Code
+                # If active, use current status. If inactive, check cache.
+                landing_str = landing_statuses[i]
+                if landing_str is None and i in self.final_outcomes:
+                    landing_str = self.final_outcomes[i]["status"]
+
+                landing_code = 0.0
+                if landing_str == "safe":
+                    landing_code = 1.0
+                elif landing_str == "good":
+                    landing_code = 2.0
+                elif landing_str == "ok":
+                    landing_code = 3.0
+                elif landing_str in ["unsafe", "crash", "destroy", "failed"]:
+                    landing_code = 4.0
+
+                if state is None:
+                    # Inactive rocket
+                    # Send NaN for reward so frontend preserves last value
+                    # Send stored landing_code so frontend knows it finished
+                    data.extend(
+                        struct.pack(
+                            "16f",
+                            *([0.0] * 11),
+                            float("nan"),
+                            0.0,
+                            0.0,
+                            landing_code,
+                            0.0,
                         )
+                    )
                 else:
-                    self.logger.warning(
-                        f"Index {i} is out of bounds for prev_actions_from_sim (length {len(prev_actions_from_sim)}). "
-                        f"Defaulting to zero action for payload for rocket {i}."
+                    # Active rocket
+                    reward = rewards[i] if rewards[i] is not None else 0.0
+                    data.extend(
+                        struct.pack(
+                            "16f",
+                            float(state.get("x", 0.0)),
+                            float(state.get("y", 0.0)),
+                            float(state.get("vx", 0.0)),
+                            float(state.get("vy", 0.0)),
+                            float(state.get("ax", 0.0)),
+                            float(state.get("ay", 0.0)),
+                            float(state.get("angle", 0.0)),
+                            float(state.get("angularVelocity", 0.0)),
+                            float(state.get("angularAcceleration", 0.0)),
+                            float(state.get("mass", 0.0)),
+                            float(state.get("fuelMass", 0.0)),
+                            float(reward),
+                            float(action.get("throttle", 0.0)),
+                            float(action.get("coldGas", 0.0)),
+                            landing_code,
+                            1.0,  # is_active
+                        )
                     )
 
-                if dones[i]:
-                    actions_for_payload.append({"throttle": 0.0, "coldGas": 0.0})
-                else:
-                    actions_for_payload.append(original_action_for_rocket_i)
+            self.write_message(bytes(data), binary=True)
+        except Exception as e:
+            self.logger.error(f"Failed to send binary telemetry: {e}")
 
-            payload: Dict[str, Any] = {
-                "step": {
-                    "state": states,
-                    "reward": rewards,
-                    "done": dones,
-                    "prev_action_taken": actions_for_payload,
-                },
-            }
-
-            payload["landing"] = [None] * self.num_rockets
-            evaluated_landings_this_step = []
+    def send_state_update(
+        self,
+        states: List[Optional[Dict]],
+        rewards: List[Optional[float]],
+        dones: List[bool],
+    ):
+        try:
+            prev_actions_from_sim = self.sim.prev_action_taken.copy()
+            actions_for_payload: List[Dict[str, float]] = []
+            landing_statuses: List[Optional[str]] = [None] * self.num_rockets
 
             for i in range(self.num_rockets):
-                if dones[i]:
+                # Prepare Action
+                if states[i] is None:
+                    actions_for_payload.append({"throttle": 0.0, "coldGas": 0.0})
+                elif dones[i]:
+                    actions_for_payload.append({"throttle": 0.0, "coldGas": 0.0})
+                else:
+                    original_action = {"throttle": 0.0, "coldGas": 0.0}
+                    if i < len(prev_actions_from_sim) and isinstance(
+                        prev_actions_from_sim[i], dict
+                    ):
+                        original_action = prev_actions_from_sim[i]
+                    actions_for_payload.append(original_action)
+
+                # Prepare Landing Status & Cache Final Result
+                if dones[i] and states[i] is not None:
                     landing_eval = evaluate_landing(states[i], self.config)
-                    payload["landing"][i] = landing_eval["landing_message"]
-                    evaluated_landings_this_step.append(landing_eval["landing_message"])
+                    status_str = landing_eval["landing_message"]
+                    landing_statuses[i] = status_str
 
-            if evaluated_landings_this_step:
-                self.logger.info(
-                    f"Landing evaluations this step: {evaluated_landings_this_step}"
-                )
+                    # Cache the result
+                    self.final_outcomes[i] = {
+                        "status": status_str,
+                        "reward": rewards[i],
+                    }
 
-            self.io_loop.add_callback(self.send_json, payload)
+            # Send Binary Telemetry
+            self.io_loop.add_callback(
+                self.send_binary_telemetry,
+                states,
+                rewards,
+                dones,
+                actions_for_payload,
+                landing_statuses,
+            )
 
             all_done = all(dones)
-            if all_done and self.config.get("simulation.loop"):
-                self.io_loop.call_later(0.1, self._initiate_restart)
-
+            if all_done:
+                self.broadcast_status()
+                if self.config.get("simulation.loop"):
+                    self.io_loop.call_later(0.1, self._initiate_restart)
         except Exception as e:
             self.logger.error(f"Failed to prepare or send state update: {e}")
 
     def _initiate_restart(self):
         try:
             states = self.sim.reset()
+            self.final_outcomes = {}  # Clear cache on restart
             self.send_json(
                 {
                     "step": {
                         "state": states,
                         "reward": None,
-                        "done": False,
+                        "done": [False] * self.num_rockets,
                         "prev_action_taken": None,
                     },
                     "restart": True,
                 }
             )
-            self.sim.start(self.send_state_update)
+            self.broadcast_status()
         except Exception as e:
-            self.logger.error(f"Failed during automatic restart: {e}")
+            self.logger.error(f"Failed during manual restart: {e}")

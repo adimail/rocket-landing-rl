@@ -10,29 +10,25 @@ interface SimulationHUDProps {
 export function SimulationHUD({ onResetCamera }: SimulationHUDProps) {
   const status = useStore((s) => s.status);
   const isAgentEnabled = useStore((s) => s.isAgentEnabled);
-  const isPlaying = useStore((s) => s.isPlaying);
-  const setIsPlaying = useStore((s) => s.setIsPlaying);
+  const isSimPlaying = useStore((s) => s.isSimPlaying);
   const toggleAgent = useStore((s) => s.toggleAgent);
   const { sendCommand } = useSocket();
 
   const handlePlay = () => {
-    setIsPlaying(true);
     sendCommand("start");
   };
 
   const handlePause = () => {
-    setIsPlaying(false);
     sendCommand("pause");
   };
 
   const handleRestart = () => {
-    setIsPlaying(true);
     sendCommand("restart");
   };
 
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md shadow-lg border border-white/10 rounded-full px-2 py-1 flex items-center gap-1">
-      {!isPlaying ? (
+      {!isSimPlaying ? (
         <button
           onClick={handlePlay}
           disabled={status !== "connected"}

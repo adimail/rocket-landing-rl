@@ -56,22 +56,23 @@ interface SimulationStore {
   selectedRocketIndex: number;
   isAgentEnabled: boolean;
   activeCharts: string[];
-  isPlaying: boolean;
+  isSimPlaying: boolean;
 
   setConnectionStatus: (status: ConnectionStatus) => void;
   setLatency: (ms: number) => void;
   setSpeed: (speed: number) => void;
   updateSimulation: (data: {
-    states?: RocketState[];
+    states?: (RocketState | null)[];
     actions?: RocketAction[];
     landing?: (string | null)[];
-    rewards?: number[];
+    rewards?: (number | null)[];
   }) => void;
   setSelectedRocket: (index: number) => void;
   toggleAgent: () => void;
+  setAgentEnabled: (enabled: boolean) => void;
   toggleChart: (key: string) => void;
   resetHistory: () => void;
-  setIsPlaying: (playing: boolean) => void;
+  setSimStatus: (status: string) => void;
 }
 
 export const useStore = create<SimulationStore>()(
@@ -89,7 +90,7 @@ export const useStore = create<SimulationStore>()(
         selectedRocketIndex: 0,
         isAgentEnabled: true,
         activeCharts: ["vy", "vx", "angle", "reward"],
-        isPlaying: false,
+        isSimPlaying: false,
 
         setConnectionStatus: (status) => set({ status }),
         setLatency: (latency) => set({ latency }),
@@ -97,10 +98,13 @@ export const useStore = create<SimulationStore>()(
 
         updateSimulation: (data) =>
           set((state) => {
-            const newTick = state.tick + 1;
+            const hasData = !!(data.states && data.states.length > 0);
+            const shouldIncrementTick = state.isSimPlaying && hasData;
+            const newTick = shouldIncrementTick ? state.tick + 1 : state.tick;
 
-            if (data.states) {
+            if (data.states && shouldIncrementTick) {
               data.states.forEach((s, i) => {
+                if (!s) return;
                 const h = initHistory(i);
                 h.ticks.push(newTick);
                 h.vy.push(s.vy);
@@ -114,31 +118,33 @@ export const useStore = create<SimulationStore>()(
                 h.reward.push(data.rewards?.[i] || 0);
               });
             }
-
             return {
               tick: newTick,
-              rockets: data.states || state.rockets,
+              rockets: data.states
+                ? data.states.map((s, i) => s || state.rockets[i])
+                : state.rockets,
               actions: data.actions || state.actions,
               landingStatus: data.landing || state.landingStatus,
-              rewards: data.rewards || state.rewards,
+              rewards: data.rewards
+                ? data.rewards.map((r, i) =>
+                    r !== null && r !== undefined ? r : state.rewards[i],
+                  )
+                : state.rewards,
             };
           }),
 
         setSelectedRocket: (index) => set({ selectedRocketIndex: index }),
         toggleAgent: () =>
           set((state) => ({ isAgentEnabled: !state.isAgentEnabled })),
+        setAgentEnabled: (enabled) => set({ isAgentEnabled: enabled }),
         toggleChart: (key) =>
           set((state) => {
             const isAlreadyActive = state.activeCharts.includes(key);
-            if (isAlreadyActive) {
-              return {
-                activeCharts: state.activeCharts.filter((c) => c !== key),
-              };
-            } else {
-              return {
-                activeCharts: [key, ...state.activeCharts],
-              };
-            }
+            return {
+              activeCharts: isAlreadyActive
+                ? state.activeCharts.filter((c) => c !== key)
+                : [key, ...state.activeCharts],
+            };
           }),
         resetHistory: () => {
           Object.values(telemetryHistory).forEach((h) => {
@@ -161,7 +167,7 @@ export const useStore = create<SimulationStore>()(
             rewards: [],
           });
         },
-        setIsPlaying: (isPlaying) => set({ isPlaying }),
+        setSimStatus: (status) => set({ isSimPlaying: status === "playing" }),
       }),
       {
         name: "rocket-sim-storage",

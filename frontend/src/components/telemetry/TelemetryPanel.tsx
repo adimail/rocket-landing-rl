@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { RocketPreview } from "./RocketPreview";
 import { StatsGrid } from "./StatsGrid";
-import { RealTimeChart } from "./RealTimeChart";
+import { RealTimeChart } from "./RealtimeChart";
 import { cn } from "@/lib/utils";
 
 const AVAILABLE_METRICS = [
