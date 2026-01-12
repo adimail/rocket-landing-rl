@@ -1,5 +1,4 @@
 import { useLandingStats } from "@/hooks/useLandingStats";
-import { Keyboard } from "lucide-react";
 
 export function ViewportOverlays() {
   const { success, failure, rate } = useLandingStats();

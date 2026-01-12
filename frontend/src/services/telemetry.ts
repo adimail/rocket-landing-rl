@@ -58,7 +58,7 @@ class TelemetryService {
       }
     }, 5000);
     this.socket = new WebSocket(WS_URL);
-    this.socket.binaryType = "arraybuffer"; // Enable binary mode
+    this.socket.binaryType = "arraybuffer";
 
     this.socket.onopen = () => {
       if (this.errorGraceTimeout) clearTimeout(this.errorGraceTimeout);
@@ -109,13 +109,11 @@ class TelemetryService {
 
   private handleMessage = (event: MessageEvent) => {
     try {
-      // Handle Binary Telemetry
       if (event.data instanceof ArrayBuffer) {
         this.handleBinaryMessage(event.data);
         return;
       }
 
-      // Handle Legacy JSON (Status updates, initial state, etc.)
       const data: WebSocketMessage = JSON.parse(event.data);
       if (data.status === "pong") {
         this.callbacks?.onLatencyUpdate(performance.now() - this.lastPing);
@@ -129,10 +127,10 @@ class TelemetryService {
         this.callbacks?.onAgentStatusChange(data.agent_enabled);
       if (data.restart) this.callbacks?.onReset();
 
-      let states = data.state;
-      let actions = data.action;
-      let landing = data.landing;
-      let rewards = data.reward;
+      let states: (RocketState | null)[] | undefined = data.state;
+      let actions: RocketAction[] | undefined = data.action;
+      let landing: (string | null)[] | undefined = data.landing;
+      let rewards: (number | null)[] | undefined = data.reward;
 
       if (data.step) {
         states = data.step.state;
@@ -160,8 +158,6 @@ class TelemetryService {
     const msgType = view.getUint8(0);
 
     if (msgType === 1) {
-      // Telemetry
-      // Format: 1 byte header + N rockets * 16 floats (64 bytes)
       const FLOATS_PER_ROCKET = 16;
       const BYTES_PER_ROCKET = FLOATS_PER_ROCKET * 4;
       const numRockets = (buffer.byteLength - 1) / BYTES_PER_ROCKET;
@@ -171,10 +167,9 @@ class TelemetryService {
       const rewards: (number | null)[] = [];
       const landing: (string | null)[] = [];
 
-      let offset = 1; // Skip header
+      let offset = 1;
 
       for (let i = 0; i < numRockets; i++) {
-        // Read 16 floats
         const x = view.getFloat32(offset, true);
         const y = view.getFloat32(offset + 4, true);
         const vx = view.getFloat32(offset + 8, true);
@@ -195,7 +190,6 @@ class TelemetryService {
         offset += BYTES_PER_ROCKET;
 
         if (isActive > 0.5) {
-          // Derived values
           const speed = Math.sqrt(vx * vx + vy * vy);
           const relativeAngle = Math.abs(angle);
 
@@ -220,11 +214,8 @@ class TelemetryService {
         }
 
         actions.push({ throttle, coldGas });
-
-        // Handle NaN reward (indicates no update/inactive)
         rewards.push(isNaN(reward) ? null : reward);
 
-        // Map landing code back to string
         let landingStr: string | null = null;
         if (landingCode > 0.5 && landingCode < 1.5) landingStr = "safe";
         else if (landingCode > 1.5 && landingCode < 2.5) landingStr = "good";
