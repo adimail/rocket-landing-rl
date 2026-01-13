@@ -10,6 +10,8 @@ import { RingBuffer } from "@/lib/structures/RingBuffer";
 export interface TelemetryHistory {
   [rocketIndex: number]: {
     ticks: RingBuffer;
+    x: RingBuffer;
+    y: RingBuffer;
     vy: RingBuffer;
     vx: RingBuffer;
     ay: RingBuffer;
@@ -18,6 +20,9 @@ export interface TelemetryHistory {
     angularVelocity: RingBuffer;
     angularAcceleration: RingBuffer;
     speed: RingBuffer;
+    fuelMass: RingBuffer;
+    throttle: RingBuffer;
+    coldGas: RingBuffer;
     reward: RingBuffer;
   };
 }
@@ -30,6 +35,8 @@ function initHistory(index: number) {
   if (!telemetryHistory[index]) {
     telemetryHistory[index] = {
       ticks: new RingBuffer(HISTORY_SIZE),
+      x: new RingBuffer(HISTORY_SIZE),
+      y: new RingBuffer(HISTORY_SIZE),
       vy: new RingBuffer(HISTORY_SIZE),
       vx: new RingBuffer(HISTORY_SIZE),
       ay: new RingBuffer(HISTORY_SIZE),
@@ -38,6 +45,9 @@ function initHistory(index: number) {
       angularVelocity: new RingBuffer(HISTORY_SIZE),
       angularAcceleration: new RingBuffer(HISTORY_SIZE),
       speed: new RingBuffer(HISTORY_SIZE),
+      fuelMass: new RingBuffer(HISTORY_SIZE),
+      throttle: new RingBuffer(HISTORY_SIZE),
+      coldGas: new RingBuffer(HISTORY_SIZE),
       reward: new RingBuffer(HISTORY_SIZE),
     };
   }
@@ -92,7 +102,26 @@ export const useStore = create<SimulationStore>()(
         activeCharts: ["vy", "vx", "angle", "reward"],
         isSimPlaying: false,
 
-        setConnectionStatus: (status) => set({ status }),
+        setConnectionStatus: (status) =>
+          set((state) => {
+            if (status === "error") {
+              Object.values(telemetryHistory).forEach((h) => {
+                Object.values(h).forEach((buffer) => buffer.clear());
+              });
+              return {
+                status,
+                tick: 0,
+                rockets: [],
+                actions: [],
+                landingStatus: [],
+                rewards: [],
+                isSimPlaying: false,
+                latency: 0,
+              };
+            }
+            return { status };
+          }),
+
         setLatency: (latency) => set({ latency }),
         setSpeed: (speed) => set({ speed }),
 
@@ -106,7 +135,11 @@ export const useStore = create<SimulationStore>()(
               data.states.forEach((s, i) => {
                 if (!s) return;
                 const h = initHistory(i);
+                const action = data.actions?.[i];
+
                 h.ticks.push(newTick);
+                h.x.push(s.x);
+                h.y.push(s.y);
                 h.vy.push(s.vy);
                 h.vx.push(s.vx);
                 h.ay.push(s.ay);
@@ -115,6 +148,9 @@ export const useStore = create<SimulationStore>()(
                 h.angularVelocity.push(s.angularVelocity);
                 h.angularAcceleration.push(s.angularAcceleration);
                 h.speed.push(s.speed);
+                h.fuelMass.push(s.fuelMass);
+                h.throttle.push(action?.throttle ?? 0);
+                h.coldGas.push(action?.coldGas ?? 0);
                 h.reward.push(data.rewards?.[i] || 0);
               });
             }
@@ -148,16 +184,7 @@ export const useStore = create<SimulationStore>()(
           }),
         resetHistory: () => {
           Object.values(telemetryHistory).forEach((h) => {
-            h.ticks.clear();
-            h.vy.clear();
-            h.vx.clear();
-            h.ay.clear();
-            h.ax.clear();
-            h.angle.clear();
-            h.angularVelocity.clear();
-            h.angularAcceleration.clear();
-            h.speed.clear();
-            h.reward.clear();
+            Object.values(h).forEach((buffer) => buffer.clear());
           });
           set({
             tick: 0,

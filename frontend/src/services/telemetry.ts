@@ -23,7 +23,6 @@ interface TelemetryCallbacks {
 
 class TelemetryService {
   private socket: WebSocket | null = null;
-  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private errorGraceTimeout: ReturnType<typeof setTimeout> | null = null;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private lastPing = 0;
@@ -48,36 +47,34 @@ class TelemetryService {
     ) {
       return;
     }
+
     this.isExplicitlyDisconnected = false;
     this.callbacks?.onStatusChange("connecting");
+
     if (this.errorGraceTimeout) clearTimeout(this.errorGraceTimeout);
-    if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
+
     this.errorGraceTimeout = setTimeout(() => {
       if (this.socket?.readyState !== WebSocket.OPEN) {
         this.callbacks?.onStatusChange("error");
       }
-    }, 5000);
+    }, 3000);
+
     this.socket = new WebSocket(WS_URL);
     this.socket.binaryType = "arraybuffer";
 
     this.socket.onopen = () => {
       if (this.errorGraceTimeout) clearTimeout(this.errorGraceTimeout);
-      if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
       this.callbacks?.onStatusChange("connected");
       this.startPing();
     };
-    this.socket.onclose = (event) => {
+
+    this.socket.onclose = () => {
       this.stopPing();
       if (this.isExplicitlyDisconnected) {
         this.callbacks?.onStatusChange("disconnected");
-        return;
-      }
-      if (event.code === 1000) {
-        this.callbacks?.onStatusChange("disconnected");
-      } else {
-        this.reconnectTimeout = setTimeout(this.connect, 3000);
       }
     };
+
     this.socket.onmessage = this.handleMessage;
   }
 
@@ -88,7 +85,6 @@ class TelemetryService {
       this.socket.close();
       this.socket = null;
     }
-    if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     if (this.errorGraceTimeout) clearTimeout(this.errorGraceTimeout);
   }
 

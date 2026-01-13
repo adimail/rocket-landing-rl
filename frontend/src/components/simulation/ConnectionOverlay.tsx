@@ -25,7 +25,7 @@ export function ConnectionOverlay() {
           </p>
           <button
             onClick={connect}
-            className="px-6 py-2 bg-white text-black rounded-full font-bold text-xs uppercase tracking-widest hover:bg-slate-200 transition-colors"
+            className="px-6 cursor-pointer py-2 bg-white text-black rounded-full font-bold text-xs uppercase tracking-widest hover:bg-slate-200 transition-colors"
           >
             Retry Connection
           </button>

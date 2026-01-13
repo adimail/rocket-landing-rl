@@ -14,7 +14,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useThrottle } from "@/hooks/useThrottle";
 import type { RocketState } from "@/types/simulation";
-import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import {
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  AlertCircle,
+} from "lucide-react";
 import {
   getRocketStatus,
   getStatusColor,
@@ -207,6 +212,21 @@ export function FleetTable() {
     }
   }, [selectedIndex, rows, rowVirtualizer]);
 
+  if (status === "error") {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-red-900/20 text-slate-500 p-6">
+        <AlertCircle className="w-10 h-10 text-red-500/40 mb-3" />
+        <h3 className="text-slate-300 font-mono text-sm uppercase tracking-widest">
+          Uplink Failure
+        </h3>
+        <p className="text-[10px] mt-2 opacity-50 text-center max-w-xs">
+          Connection to the simulation server was lost. Please use the retry
+          control to re-establish telemetry.
+        </p>
+      </div>
+    );
+  }
+
   if (
     status === "connecting" ||
     (status === "connected" && rockets.length === 0)
@@ -232,27 +252,36 @@ export function FleetTable() {
         <div style={{ minWidth: "max-content" }}>
           <div className="sticky top-0 z-10 bg-slate-950 border-b border-slate-800">
             {table.getHeaderGroups().map((headerGroup) => (
-              <div key={headerGroup.id} className="flex items-center px-4 py-3">
+              <div key={headerGroup.id} className="flex items-center">
                 {headerGroup.headers.map((header) => {
                   const isSortable = header.column.getCanSort();
                   const sortDirection = header.column.getIsSorted();
+                  const isSorted = !!sortDirection;
 
                   return (
                     <div
                       key={header.id}
                       className={cn(
-                        "text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 select-none",
+                        "h-10 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 select-none transition-colors whitespace-nowrap",
                         isSortable && "cursor-pointer hover:text-slate-300",
+                        isSorted && "bg-slate-800/50 text-slate-200",
                       )}
                       style={{ width: header.getSize() }}
                       onClick={header.column.getToggleSortingHandler()}
                     >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
+                      <span className="w-full">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                      </span>
                       {isSortable && (
-                        <span className="text-slate-600">
+                        <span
+                          className={cn(
+                            "transition-colors flex-shrink-0",
+                            isSorted ? "text-white" : "text-slate-600",
+                          )}
+                        >
                           {sortDirection === "asc" ? (
                             <ChevronUp className="w-3 h-3" />
                           ) : sortDirection === "desc" ? (

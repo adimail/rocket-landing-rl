@@ -29,11 +29,64 @@ function RocketPreviewModel() {
     <group ref={groupRef}>
       <RocketMesh
         getAction={getAction}
-        scale={0.002}
+        scale={0.0018}
         config={PREVIEW_CONFIG}
         isHighlighted={true}
       />
     </group>
+  );
+}
+
+function ControlHUD({ index }: { index: number }) {
+  const action = useStore((s) => s.actions[index]);
+  const throttle = action?.throttle ?? 0;
+  const coldGas = action?.coldGas ?? 0;
+
+  return (
+    <div className="absolute inset-0 pointer-events-none p-4">
+      <div className="absolute right-20 top-1/2 -translate-y-1/2 flex gap-4 items-start">
+        <div className="flex flex-col items-center">
+          <span className="h-5 flex items-center text-[7px] font-bold text-slate-600 uppercase">
+            R
+          </span>
+          <div className="w-1.5 h-32 bg-slate-950 border border-slate-800 rounded-full relative overflow-hidden">
+            <div className="absolute top-1/2 left-0 right-0 h-px bg-slate-800 z-10" />
+            <div
+              className={cn(
+                "absolute left-0 right-0 transition-all duration-75",
+                coldGas > 0 ? "bg-blue-400" : "bg-indigo-400",
+              )}
+              style={{
+                top: coldGas > 0 ? `${50 - coldGas * 50}%` : "50%",
+                height: `${Math.abs(coldGas) * 50}%`,
+              }}
+            />
+          </div>
+          <span className="h-5 flex items-center text-[7px] font-bold text-slate-600 uppercase">
+            L
+          </span>
+          <span className="text-[8px] font-black text-slate-500 uppercase [writing-mode:vertical-lr] rotate-180 mt-2">
+            RCS
+          </span>
+        </div>
+
+        <div className="flex flex-col items-center w-5 overflow-hidden">
+          <div className="h-5" />
+          <div className="w-1.5 h-32 bg-slate-950 border border-slate-800 rounded-full relative flex flex-col justify-end overflow-hidden">
+            <div
+              className="w-full bg-gradient-to-t from-orange-600 via-orange-400 to-yellow-300 transition-all duration-75"
+              style={{ height: `${throttle * 100}%` }}
+            />
+          </div>
+          <span className="h-5 flex items-center text-[10px] font-mono font-bold text-orange-400">
+            {(throttle * 100).toFixed(0)}%
+          </span>
+          <span className="text-[8px] font-black text-slate-500 uppercase [writing-mode:vertical-lr] rotate-180 mt-2">
+            THR
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -63,7 +116,7 @@ export function RocketPreview() {
   }
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative bg-slate-950">
       <Canvas>
         <PerspectiveCamera makeDefault position={[0, 4, 35]} fov={35} />
         <ambientLight intensity={1.3} />
@@ -73,7 +126,9 @@ export function RocketPreview() {
         </Suspense>
       </Canvas>
 
-      <div className="absolute bottom-4 left-4 flex flex-col gap-1">
+      <ControlHUD index={selectedIndex} />
+
+      <div className="absolute bottom-4 left-4 flex flex-col gap-1 bg-slate-950/60 p-2 rounded-lg border border-white/5 backdrop-blur-sm">
         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
           Step Reward
         </span>
