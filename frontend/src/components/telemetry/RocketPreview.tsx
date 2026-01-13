@@ -7,6 +7,8 @@ import { AltitudeTape } from "./AltitudeTape";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 import { RocketMesh } from "@/components/simulation/RocketMesh";
+import { SpeedParticles } from "@/components/simulation/SpeedParticles";
+import { ExplosionEffect } from "@/components/simulation/ExplosionEffect";
 
 const PREVIEW_CONFIG = {
   flame: { radius: 0.5, height: 3.0 },
@@ -122,6 +124,8 @@ export function RocketPreview() {
         <ambientLight intensity={1.3} />
         <pointLight position={[10, 10, 10]} intensity={1.5} />
         <Suspense fallback={null}>
+          <SpeedParticles />
+          <ExplosionEffect index={selectedIndex} />
           <RocketPreviewModel />
         </Suspense>
       </Canvas>

@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useStore } from "@/lib/store";
 import * as THREE from "three";
 import { RocketMesh } from "./RocketMesh";
+import { ExplosionEffect } from "./ExplosionEffect";
 
 const ROCKET_SCALE = 0.003;
 
@@ -28,6 +29,7 @@ export function Rocket3D({ index }: { index: number }) {
         scale={ROCKET_SCALE}
         isHighlighted={isHighlighted}
       />
+      <ExplosionEffect index={index} />
     </group>
   );
 }
