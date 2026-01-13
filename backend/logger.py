@@ -17,9 +17,9 @@ class JsonFormatter(logging.Formatter):
             "name": record.name,
             "message": record.getMessage(),
         }
-        # If 'extra' data was passed, include it (excluding standard keys)
-        if hasattr(record, "props"):
-            log_record.update(record.props)
+        props = getattr(record, "props", None)
+        if props and isinstance(props, dict):
+            log_record.update(props)
 
         return json.dumps(log_record)
 
