@@ -24,23 +24,20 @@ def get_random_in_range(range_key: str) -> float:
 
 
 def get_initial_state():
-    x = round(get_random_in_range("rocket.position_limits.x"), 2)
-    y = round(get_random_in_range("rocket.position_limits.y"), 2)
+    x = get_random_in_range("rocket.position_limits.x")
+    y = get_random_in_range("rocket.position_limits.y")
 
-    vx = round(get_random_in_range("rocket.velocity_limits.vx"), 2)
-    vy = round(get_random_in_range("rocket.velocity_limits.vy"), 2)
+    vx = get_random_in_range("rocket.velocity_limits.vx")
+    vy = get_random_in_range("rocket.velocity_limits.vy")
 
-    ax = round(get_random_in_range("rocket.acceleration_limits.ax"), 2)
-    ay = round(get_random_in_range("rocket.acceleration_limits.ay"), 2)
+    ax = get_random_in_range("rocket.acceleration_limits.ax")
+    ay = get_random_in_range("rocket.acceleration_limits.ay")
 
-    angle = round(get_random_in_range("rocket.attitude_limits.angle"), 2)
-    angular_velocity = round(
-        get_random_in_range("rocket.attitude_limits.angular_velocity"),
-        2,
-    )
+    angle = get_random_in_range("rocket.attitude_limits.angle")
+    angular_velocity = get_random_in_range("rocket.attitude_limits.angular_velocity")
 
-    dry_mass = round(get_random_in_range("rocket.mass_limits.dry_mass"), 2)
-    fuel_mass = round(get_random_in_range("rocket.mass_limits.fuel_mass"), 2)
+    dry_mass = get_random_in_range("rocket.mass_limits.dry_mass")
+    fuel_mass = get_random_in_range("rocket.mass_limits.fuel_mass")
 
     return {
         "x": x,
