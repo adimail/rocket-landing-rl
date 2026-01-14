@@ -103,10 +103,12 @@ export const useStore = create<SimulationStore>()(
         isSimPlaying: false,
 
         setConnectionStatus: (status) =>
-          set((state) => {
+          set((_state) => {
             if (status === "error") {
               Object.values(telemetryHistory).forEach((h) => {
-                Object.values(h).forEach((buffer) => buffer.clear());
+                (Object.values(h) as RingBuffer[]).forEach((buffer) =>
+                  buffer.clear(),
+                );
               });
               return {
                 status,
@@ -184,7 +186,9 @@ export const useStore = create<SimulationStore>()(
           }),
         resetHistory: () => {
           Object.values(telemetryHistory).forEach((h) => {
-            Object.values(h).forEach((buffer) => buffer.clear());
+            (Object.values(h) as RingBuffer[]).forEach((buffer) =>
+              buffer.clear(),
+            );
           });
           set({
             tick: 0,

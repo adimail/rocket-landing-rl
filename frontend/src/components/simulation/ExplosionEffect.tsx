@@ -81,6 +81,7 @@ export function ExplosionEffect({ index }: { index: number }) {
           count={count}
           array={particles.pos}
           itemSize={3}
+          args={[particles.pos, 3]}
         />
       </bufferGeometry>
       <pointsMaterial
