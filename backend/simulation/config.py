@@ -63,7 +63,6 @@ def get_environment_config():
         "air_density": cfg.get("environment.air_density"),
         "num_rockets": cfg.get("environment.num_rockets"),
         "time_step": cfg.get("simulation.time_step"),
-        "sim_speed": cfg.get("simulation.speed"),
         "sim_loop": cfg.get("simulation.loop"),
     }
 

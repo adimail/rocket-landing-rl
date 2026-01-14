@@ -15,7 +15,6 @@ logging:
 simulation:
   time_step: 0.1                           # s
   max_steps: 10000                         # Max steps per episode before truncation
-  speed: 1                                 # Speed of simulation (for visualization, not RL training)
   loop: false
 
 model:

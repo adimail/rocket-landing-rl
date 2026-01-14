@@ -55,9 +55,6 @@ class SimulationController:
                 {"throttle": 0.0, "coldGas": 0.0} for _ in range(self.num_rockets)
             ]
 
-            # Strict config retrieval
-            self.sim_speed = min(self.config.get("simulation.speed"), 10)
-
             # --- BUFFERED LOGGING SETUP ---
             self.log_buffer = []
             self.BUFFER_SIZE = 100  # Flush to disk every 100 steps
@@ -215,7 +212,7 @@ class SimulationController:
 
                 loop_end_time = asyncio.get_event_loop().time()
                 elapsed_time = loop_end_time - loop_start_time
-                sleep_duration = max(0, (self.dt / self.sim_speed) - elapsed_time)
+                sleep_duration = max(0, self.dt - elapsed_time)
                 await asyncio.sleep(sleep_duration)
             except Exception as e:
                 self._log("exception", f"Error in simulation loop: {e}")

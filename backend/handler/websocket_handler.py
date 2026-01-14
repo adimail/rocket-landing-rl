@@ -87,10 +87,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
                 else:
                     self.handle_command(command)
                     return
-            if "speed" in data:
-                self.sim.sim_speed = max(float(data["speed"]), 0.01)
-                self.broadcast_status()
-                return
             if "action" in data and "rocket_index" in data:
                 self.sim.set_action(data["action"], int(data["rocket_index"]))
                 return
@@ -111,7 +107,6 @@ class RocketWebSocketHandler(tornado.websocket.WebSocketHandler):
         self.send_json(
             {
                 "status": status_msg,
-                "speed": self.sim.sim_speed,
                 "agent_enabled": self.sim.agent_enabled,
             }
         )
