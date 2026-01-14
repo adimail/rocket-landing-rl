@@ -99,11 +99,13 @@ export function RocketPreview() {
   const [reward, setReward] = useState(0);
 
   useEffect(() => {
+    if (!hasData) return;
+    setReward(useStore.getState().rewards[selectedIndex] || 0);
     return useStore.subscribe(
       (state) => state.rewards[selectedIndex],
       (val) => setReward(val || 0),
     );
-  }, [selectedIndex]);
+  }, [selectedIndex, hasData]);
 
   if (status === "connecting" || !hasData) {
     return (

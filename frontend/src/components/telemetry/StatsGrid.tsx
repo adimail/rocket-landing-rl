@@ -20,11 +20,13 @@ function MetricCard({
   const ref = React.useRef<HTMLSpanElement>(null);
 
   React.useEffect(() => {
+    if (!hasData) return;
+
     const selector = isReward
       ? (state: any) => state.rewards[selectedIndex]
       : (state: any) => state.rockets[selectedIndex]?.[valueKey!];
 
-    return useStore.subscribe(selector, (val) => {
+    const syncValue = (val: number | undefined) => {
       if (ref.current && val !== undefined) {
         ref.current.innerText = val.toFixed(2);
         if (isReward) {
@@ -38,8 +40,12 @@ function MetricCard({
           );
         }
       }
-    });
-  }, [selectedIndex, valueKey, isReward]);
+    };
+
+    syncValue(selector(useStore.getState()));
+
+    return useStore.subscribe(selector, (val) => syncValue(val));
+  }, [selectedIndex, valueKey, isReward, hasData]);
 
   if (status === "connecting" || !hasData) {
     return (
@@ -78,7 +84,7 @@ export function StatsGrid() {
       <MetricCard label="Alt" valueKey="y" unit="m" />
       <MetricCard label="Vel Y" valueKey="vy" unit="m/s" />
       <MetricCard label="Vel X" valueKey="vx" unit="m/s" />
-      <MetricCard label="Reward" unit="pts" isReward />
+      <MetricCard label="Angle" valueKey="angle" unit="°" />
       <MetricCard label="Acc Y" valueKey="ay" unit="m/s²" />
       <MetricCard label="Acc X" valueKey="ax" unit="m/s²" />
       <MetricCard label="Speed" valueKey="speed" unit="m/s" />
