@@ -54,7 +54,7 @@ class RocketLandingEnv(gym.Env):
             self.config = Config()
             self.rl_config = get_rl_config()
 
-            self.max_episode_steps = self.rl_config.get("max_episode_steps", 1000)
+            self.max_episode_steps = self.rl_config["max_episode_steps"]
 
             self.rocket = Rocket()  # Rocket now loads its own config internally
             self.current_step = 0

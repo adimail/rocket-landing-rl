@@ -10,43 +10,39 @@ from multiprocessing import freeze_support
 from backend.envs import RocketLandingEnv
 from backend.config import Config
 
-LOG_DIR = "models/logs/train"
-MODEL_DIR = "models"
+config_loader = Config()
+
+# Paths from Config (Strict)
+LOG_DIR = config_loader.get("paths.train_logs")
+MODEL_DIR = config_loader.get("paths.models_dir")
+CHECKPOINT_DIR = config_loader.get("paths.checkpoints")
+
+# Training Meta from Config (Strict)
+train_config = config_loader.get("rl.training")
+TOTAL_TIMESTEPS = train_config["total_timesteps"]
+N_ENVS = train_config["n_envs"]
+EVAL_FREQ_STEPS = train_config["eval_freq_steps"]
+CHECKPOINT_FREQ_STEPS = train_config["checkpoint_freq_steps"]
+
+# Calculate frequency based on parallel envs
+EVAL_FREQ = max(EVAL_FREQ_STEPS // N_ENVS, 1)
+CHECKPOINT_FREQ = max(CHECKPOINT_FREQ_STEPS // N_ENVS, 1)
+
+USE_SUBPROC_VEC_ENV = True
 TENSORBOARD_LOG_NAME = "PPO_RocketLander"
 MODEL_NAME_PREFIX = "ppo_rocket"
 
-TOTAL_TIMESTEPS = 1_000_000
-N_ENVS = 8  # Number of parallel environments (based on CPU cores)
-USE_SUBPROC_VEC_ENV = True
-
-# Evaluation and Saving Frequency (in total steps across all envs)
-EVAL_FREQ = max(25_000 // N_ENVS, 1)
-CHECKPOINT_FREQ = max(100_000 // N_ENVS, 1)
-
-config_loader = Config()
-ppo_config = config_loader.get("rl.training.algorithm.PPO")
-
-try:
-    GAMMA = ppo_config.get("gamma", 0.99)
-    LEARNING_RATE = ppo_config.get("learning_rate", 0.0003)
-    BATCH_SIZE = ppo_config.get("batch_size", 256)
-    N_STEPS = ppo_config.get("n_steps", 2048)
-    ENT_COEF = ppo_config.get("ent_coef", 0.01)
-    N_EPOCHS = ppo_config.get("n_epochs", 10)
-    GAE_LAMBDA = ppo_config.get("gae_lambda", 0.95)
-    CLIP_RANGE = ppo_config.get("clip_range", 0.2)
-    MAX_GRAD_NORM = ppo_config.get("max_grad_norm", 0.5)
-except KeyError:
-    print("Warning: Could not load PPO config from yaml, using defaults.")
-    GAMMA = 0.99
-    LEARNING_RATE = 0.0003
-    BATCH_SIZE = 256
-    N_STEPS = 2048
-    ENT_COEF = 0.01
-    N_EPOCHS = 10
-    GAE_LAMBDA = 0.95
-    CLIP_RANGE = 0.2
-    MAX_GRAD_NORM = 0.5
+# Algorithm Config (Strict)
+ppo_config = train_config["algorithm"]["PPO"]
+GAMMA = ppo_config["gamma"]
+LEARNING_RATE = ppo_config["learning_rate"]
+BATCH_SIZE = ppo_config["batch_size"]
+N_STEPS = ppo_config["n_steps"]
+ENT_COEF = ppo_config["ent_coef"]
+N_EPOCHS = ppo_config["n_epochs"]
+GAE_LAMBDA = ppo_config["gae_lambda"]
+CLIP_RANGE = ppo_config["clip_range"]
+MAX_GRAD_NORM = ppo_config["max_grad_norm"]
 
 
 def make_env():
@@ -60,12 +56,15 @@ if __name__ == "__main__":
 
     os.makedirs(LOG_DIR, exist_ok=True)
     os.makedirs(MODEL_DIR, exist_ok=True)
+    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
     run_timestamp = time.strftime("%Y%m%d-%H%M%S")
     run_log_dir = os.path.join(LOG_DIR, f"{TENSORBOARD_LOG_NAME}_{run_timestamp}")
     run_model_dir = os.path.join(MODEL_DIR, f"{MODEL_NAME_PREFIX}_{run_timestamp}")
     best_model_save_path = os.path.join(run_model_dir, "best_model")
-    checkpoint_save_path = os.path.join(run_model_dir, "checkpoints")
+    checkpoint_save_path = os.path.join(
+        CHECKPOINT_DIR, f"{MODEL_NAME_PREFIX}_{run_timestamp}"
+    )
     vec_normalize_path = os.path.join(run_model_dir, "vecnormalize.pkl")
 
     os.makedirs(run_log_dir, exist_ok=True)
@@ -75,6 +74,7 @@ if __name__ == "__main__":
 
     print(f"TensorBoard Logs: {run_log_dir}")
     print(f"Models will be saved in: {run_model_dir}")
+    print(f"Checkpoints will be saved in: {checkpoint_save_path}")
     print(f"VecNormalize stats will be saved to: {vec_normalize_path}")
 
     # --- Environment Setup ---

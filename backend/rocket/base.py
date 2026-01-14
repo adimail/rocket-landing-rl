@@ -156,15 +156,13 @@ class Rocket:
             linear_acceleration = self.physics_engine.calculate_acceleration(
                 net_force, total_mass
             )
-            self.state["ax"] = round(linear_acceleration[0], 4)
-            self.state["ay"] = round(linear_acceleration[1], 4)
+            self.state["ax"] = linear_acceleration[0]
+            self.state["ay"] = linear_acceleration[1]
 
             angular_acceleration = self.physics_engine.calculate_angular_acceleration(
                 cold_gas_control=cold_gas_control, total_mass=total_mass
             )
-            self.state["angularAcceleration"] = round(
-                angular_acceleration, 4
-            )  # deg/s^2
+            self.state["angularAcceleration"] = angular_acceleration  # deg/s^2
 
             new_state = self.physics_engine.update_state_verlet(
                 self.state, self.previous_state, dt
@@ -235,10 +233,6 @@ class Rocket:
             state_copy["totalMass"] = state_copy.get("mass", 0.0) + state_copy.get(
                 "fuelMass", 0.0
             )
-
-            for key in state_copy:
-                if isinstance(state_copy[key], (float, np.floating)):
-                    state_copy[key] = round(state_copy[key], 3)
 
             return state_copy
         except Exception as err:

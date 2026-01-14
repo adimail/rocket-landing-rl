@@ -1,10 +1,20 @@
 app:
   PORT: 9000
 
+paths:
+  logs_dir: "logs"
+  models_dir: "assets/model"
+  train_logs: "models/logs/train"
+  checkpoints: "models/checkpoints"
+
+logging:
+  log_state: false
+  log_action: false
+  log_reward: false
+
 simulation:
   time_step: 0.1                           # s
   max_steps: 10000                         # Max steps per episode before truncation
-  speed: 1                                 # Speed of simulation (for visualization, not RL training)
   loop: false
 
 model:
@@ -57,9 +67,10 @@ rocket:
     fuel_mass: [370000, 410000]            # kg (initial fuel mass)
 
 rl:
-  tip_over_angle: 90
-  max_horizontal_position: 50000
-  max_altitude: 50000
+  tip_over_angle: 90.0
+  max_horizontal_position: 50000.0
+  max_altitude: 50000.0
+  max_episode_steps: 1000
 
   rewards:
     landing_perfect: 4000.0
@@ -70,8 +81,8 @@ rl:
     tipped_over: -300.0
     throttle_descent_reward_scale: 0.3
     cold_gas_reward_scale: 0.7
-    free_fall_penalty_scale: -0.2
-    angle_aware_throttle_scale: -0.3
+    free_fall_penalty_scale: 0.2
+    angle_aware_throttle_scale: 0.3
     horizontal_correction_scale: 0.2
     throttle_penalty_factor: 0.0
     rcs_penalty_factor: 0.0
@@ -80,6 +91,10 @@ rl:
     gamma: 0.99
 
   training:
+    total_timesteps: 1000000
+    n_envs: 8
+    eval_freq_steps: 25000
+    checkpoint_freq_steps: 100000
     algorithm:
       PPO:
         learning_rate: 0.0003

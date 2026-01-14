@@ -4,27 +4,23 @@ from typing import Tuple, Dict, Any
 from backend.config import Config
 from backend.utils import evaluate_landing
 
-try:
-    _config_loader = Config()
-    _reward_config = _config_loader.get("rl.rewards")
-    _rl_config = _config_loader.get("rl")
-except Exception as e:
-    print(f"FATAL ERROR: Could not load configuration for reward calculation: {e}")
-    _reward_config = {}
-    _rl_config = {}
+# Load config immediately. If it fails, let it crash the app at startup.
+_config_loader = Config()
+_reward_config = _config_loader.get("rl.rewards")
+_rl_config = _config_loader.get("rl")
 
-# Get truncation thresholds from rl_config with defaults
-max_horizontal_pos = _rl_config.get("max_horizontal_position", 50000.0)
-max_altitude = _rl_config.get("max_altitude", 20000.0)
-tip_over_angle = _rl_config.get("tip_over_angle", 90.0)
+# Get truncation thresholds from rl_config (Strict, no defaults)
+max_horizontal_pos = _rl_config["max_horizontal_position"]
+max_altitude = _rl_config["max_altitude"]
+tip_over_angle = _rl_config["tip_over_angle"]
 
-# Get the reward scales
-throttle_descent_reward_scale = _reward_config.get("throttle_descent_reward_scale", 0.3)
-free_fall_penalty_scale = _reward_config.get("free_fall_penalty_scale", 0.2)
-cold_gas_reward_scale = _reward_config.get("cold_gas_reward_scale", 0.7)
-angle_aware_throttle_scale = _reward_config.get("angle_aware_throttle_scale", 0.3)
-horizontal_correction_scale = _reward_config.get("horizontal_correction_scale", 0.2)
-correct_direction_bonus = _reward_config.get("correct_direction_bonus", 1.5)
+# Get the reward scales (Strict, no defaults)
+throttle_descent_reward_scale = _reward_config["throttle_descent_reward_scale"]
+free_fall_penalty_scale = _reward_config["free_fall_penalty_scale"]
+cold_gas_reward_scale = _reward_config["cold_gas_reward_scale"]
+angle_aware_throttle_scale = _reward_config["angle_aware_throttle_scale"]
+horizontal_correction_scale = _reward_config["horizontal_correction_scale"]
+correct_direction_bonus = _reward_config["correct_direction_bonus"]
 gamma = _reward_config["gamma"]
 
 
